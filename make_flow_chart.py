@@ -115,10 +115,6 @@ class DependencyInfo:
         return self.events[index]
 
 
-def cluster(topic: str) -> str:
-    return f'cluster_{topic}'
-
-
 def qualify(topic: str, event: Event, modifier: None | str = None) -> str:
     return f"{event.unit}${event.name}${'' if modifier is None else f'{modifier}$'}{topic}"
 
@@ -139,7 +135,8 @@ def make_event_topic_dependency_chart(info: DependencyInfo, filename_out: str):
     graph.attr(label='Event Based Topic Dependencies')
 
     for event in info.events:
-        sub_graph = Digraph(cluster(event.name))
+        sub_graph = Digraph(event.name)
+        sub_graph.attr(cluster='True')
         sub_graph.attr(label=event.name)
         for topic in event.topics_taught:
             sub_graph.node(qualify(topic, event), label=topic)
@@ -159,12 +156,14 @@ def make_full_event_dependency_chart(info: DependencyInfo, filename_out: str):
     graph.attr(label='Event Dependencies')
 
     def handle_event():
-        taught_graph = Digraph(cluster(f'{event.name}$taught'))
+        taught_graph = Digraph(f'{event.name}$taught')
+        taught_graph.attr(cluster='True')
         taught_graph.attr(label='Taught')
         for topic in event.topics_taught:
             qualified_topic = qualify(topic, event, 'taught')
             taught_graph.node(qualified_topic, label=topic)
-        required_graph = Digraph(cluster(f'{event.name}$required'))
+        required_graph = Digraph(f'{event.name}$required')
+        required_graph.attr(cluster='True')
         required_graph.attr(label='Required')
         for topic in event.topics_required:
             topic_taught_event = info.get_most_recent_taught_time(event, topic, True)
@@ -175,7 +174,8 @@ def make_full_event_dependency_chart(info: DependencyInfo, filename_out: str):
             else:
                 graph.edge(qualify(topic, topic_taught_event, 'taught'), qualified_topic)
 
-        sub_graph = Digraph(cluster(event.name))
+        sub_graph = Digraph(event.name)
+        sub_graph.attr(cluster='True')
         sub_graph.attr(label=event.name)
         sub_graph.subgraph(taught_graph)
         sub_graph.subgraph(required_graph)
@@ -192,7 +192,8 @@ def make_event_dependency_chart(info: DependencyInfo, filename_out: str, event: 
 
     event_graphs: dict[Event, Digraph] = {}
 
-    event_sub_graph = Digraph(cluster(event.name))
+    event_sub_graph = Digraph(event.name)
+    event_sub_graph.attr(cluster='True')
     event_sub_graph.attr(label=f'{event.name} Requirements')
 
     event_graphs[event] = event_sub_graph
@@ -203,7 +204,8 @@ def make_event_dependency_chart(info: DependencyInfo, filename_out: str, event: 
             print('WARNING: topic \'{dependency}\' is not taught before it is required in {event.unit}, {event.name}!')
         else:
             if topic_event not in event_graphs:
-                temp = Digraph(cluster(topic_event.name))
+                temp = Digraph(topic_event.name)
+                temp.attr(cluster='True')
                 temp.attr(label=topic_event.name)
                 event_graphs[topic_event] = temp
             sub_graph = event_graphs[topic_event]
