@@ -1,0 +1,9 @@
+# Generated graph files
+*.gv
+*.gv.pdf
+
+# Local spreadsheet files
+*.tsv
+
+# IDEA files
+/.idea

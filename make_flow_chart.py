@@ -154,8 +154,7 @@ def make_event_topic_dependency_chart(info: DependencyInfo, filename_out: str):
 def make_full_event_dependency_chart(info: DependencyInfo, filename_out: str):
     graph = Digraph(filename_out, engine='fdp')
     graph.attr(label='Event Dependencies')
-
-    def handle_event():
+    for event in info.events:
         taught_graph = Digraph(f'{event.name}$taught')
         taught_graph.attr(cluster='True')
         taught_graph.attr(label='Taught')
@@ -173,20 +172,16 @@ def make_full_event_dependency_chart(info: DependencyInfo, filename_out: str):
                 print(f'WARNING: topic \'{topic}\' is not taught before it is required in {event.unit}, {event.name}!')
             else:
                 graph.edge(qualify(topic, topic_taught_event, 'taught'), qualified_topic)
-
         sub_graph = Digraph(event.name)
         sub_graph.attr(cluster='True')
         sub_graph.attr(label=event.name)
         sub_graph.subgraph(taught_graph)
         sub_graph.subgraph(required_graph)
         graph.subgraph(sub_graph)
-
-    for event in info.events:
-        handle_event()
     graph.view()
 
 
-def make_event_dependency_chart(info: DependencyInfo, filename_out: str, event: Event):
+def make_specific_event_dependency_chart(info: DependencyInfo, filename_out: str, event: Event):
     graph = Digraph(filename_out)
     graph.attr(label=f'{event.unit}, {event.name} Dependencies')
 
@@ -198,8 +193,13 @@ def make_event_dependency_chart(info: DependencyInfo, filename_out: str, event: 
 
     event_graphs[event] = event_sub_graph
 
+    nodes_drawn: list[str] = []
+    edges_drawn: list[tuple[str, str]] = []
+
     def add_topic(topic: str, parent_event: Event, include_start: bool = True, parent_topic: str | None = None):
         topic_event = info.get_most_recent_taught_time(parent_event, topic, include_start)
+        if parent_topic is None:
+            parent_topic = topic
         if topic_event is None:
             print('WARNING: topic \'{dependency}\' is not taught before it is required in {event.unit}, {event.name}!')
         else:
@@ -210,13 +210,17 @@ def make_event_dependency_chart(info: DependencyInfo, filename_out: str, event: 
                 event_graphs[topic_event] = temp
             sub_graph = event_graphs[topic_event]
             qualified_name = f'{topic_event.unit}${topic_event.name}${topic}'
-            sub_graph.node(qualified_name, topic)
-            graph.edge(qualified_name,
-                       f'{parent_event.unit}${parent_event.name}${topic if parent_topic is None else parent_topic}')
+            if qualified_name not in nodes_drawn:
+                sub_graph.node(qualified_name, topic)
+                nodes_drawn.append(qualified_name)
+            parent_qualified_name = f'{parent_event.unit}${parent_event.name}${parent_topic}'
+            if (qualified_name, parent_qualified_name) not in edges_drawn:
+                graph.edge(qualified_name, parent_qualified_name)
+                edges_drawn.append((qualified_name, parent_qualified_name))
             add_dependencies(topic, topic_event)
 
     def add_dependencies(topic: str, parent_event: Event):
-        for dependency in parent_event.topics_taught[topic]:
+        for dependency in info.topics[topic].dependencies:
             add_topic(dependency, parent_event, dependency is not topic, topic)
 
     for required_topic in event.topics_required:
@@ -301,7 +305,7 @@ def main(topics_file: str, events_file: str, args: list[str]):
             if event is None:
                 print(f'Unrecognized event: {focus_event}')
             else:
-                make_event_dependency_chart(info, f'{output_path}{unit}_{name}event-dependencies', event)
+                make_specific_event_dependency_chart(info, f'{output_path}{unit}_{name}event-dependencies', event)
         else:
             make_full_event_dependency_chart(info, f'{output_path}full-event-dependencies')
 
