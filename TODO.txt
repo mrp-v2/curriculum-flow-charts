@@ -1,0 +1,5 @@
+event specific graph shows dependencies AND ALSO dependents. maybe also the dependencies of the dependents
+
+group topics that always go together(e.g. basic bit -> move, paint, left, right)
+
+maybe show descriptions in a key on the graph
