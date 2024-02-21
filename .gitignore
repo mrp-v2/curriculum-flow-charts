@@ -7,3 +7,6 @@
 
 # IDEA files
 /.idea
+
+# cache
+/__pycache__
