@@ -109,6 +109,16 @@ class DependencyInfo:
             return None
         return self.events[index]
 
+    def get_next_taught_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
+        index: int = self.events.index(start)
+        if not include_start:
+            index += 1
+        while topic not in self.events[index].topics_taught and index <= len(self.events):
+            index += 1
+        if index == len(self.events):
+            return None
+        return self.events[index]
+
 
 def qualify(topic: str, event: Event, modifier: None | str = None) -> str:
     return f"{event.unit}${event.name}${'' if modifier is None else f'{modifier}$'}{topic}"
