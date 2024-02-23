@@ -3,7 +3,8 @@ import csv
 
 class Event:
     """
-    Stores information about an event: its unit, name, the topics taught, and the topics required
+    Stores information about an event: its unit, name, the topics taught, and the topics required.
+    Also stores a link to the previous and next event.
     """
 
     def __init__(self, unit: str, name: str, topics_taught: list[str], topics_required: list[str]):
@@ -11,6 +12,8 @@ class Event:
         self.name: str = name
         self.topics_taught: list[str] = topics_taught
         self.topics_required: list[str] = topics_required
+        self.previous: Event | None = None
+        self.next: Event | None = None
 
     def __str__(self):
         return self.name
@@ -62,38 +65,14 @@ class DependencyInfo:
         Prints information regarding removals to the console.
         """
         for topic in self.topics.values():
-            dependencies = topic.dependencies
-            i: int = 0
-            while i < len(dependencies):
-                for other in dependencies:
-                    if other == dependencies[i]:
-                        continue
-                    if self.is_topic_dependent_on(other, dependencies[i]):
-                        print(f'INFO: ignoring dependency {dependencies[i]} from {topic} because '
-                              f'it is a dependency of {other}, which is also a dependency of {topic}')
-                        dependencies.remove(dependencies[i])
-                        i -= 1
-                        break
-                i += 1
+            simplify(self, topic.dependencies, topic.__str__())
         unused_topics = [item for item in self.topics]
         for event in self.events:
-            required = event.topics_required
-            i: int = 0
-            while i < len(required):
-                for other in required:
-                    if other == required[i]:
-                        continue
-                    if self.is_topic_dependent_on(other, required[i]):
-                        print(f'INFO: ignoring required topic {required[i]} from {event} because '
-                              f'it is a dependency of {other}, which is also required by {event}')
-                        required.remove(required[i])
-                        i -= 1
-                        break
-                i += 1
+            simplify(self, event.topics_required, event.__str__())
             for topic in event.topics_taught:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
-            for topic in required:
+            for topic in event.topics_required:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
         for topic in unused_topics:
@@ -109,15 +88,35 @@ class DependencyInfo:
             return None
         return self.events[index]
 
-    def get_next_taught_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
+    def get_next_required_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
         index: int = self.events.index(start)
         if not include_start:
             index += 1
-        while topic not in self.events[index].topics_taught and index <= len(self.events):
+        while index < len(self.events) and topic not in self.events[index].topics_required:
             index += 1
         if index == len(self.events):
             return None
         return self.events[index]
+
+
+def simplify(info: DependencyInfo, topics: list[str], title: str):
+    """
+    Takes a list of topics, and removes topics that are dependencies of other topics in the list.
+    Prints info about each topic removed in this way.
+    """
+    index: int = 0
+    while index < len(topics):
+        topic = topics[index]
+        for other_topic in topics:
+            if other_topic == topic:
+                continue
+            if info.is_topic_dependent_on(other_topic, topic):
+                print(f'INFO: ignoring topic \'{topic}\' in \'{title}\' because it is a dependency of \''
+                      f'{other_topic}\', which is also in \'{title}\'')
+                topics.remove(topic)
+                index -= 1
+                break
+        index += 1
 
 
 def qualify(topic: str, event: Event, modifier: None | str = None) -> str:
@@ -149,8 +148,9 @@ def read_info(topics_file: str, events_file: str) -> DependencyInfo:
     topic_taught_events: dict[str, str] = {}
     with open(events_file) as events_text:
         events_reader = csv.reader(events_text, delimiter='\t')
-        first_row = True
-        current_unit = None
+        first_row: bool = True
+        current_unit: str | None = None
+        last_event: Event | None = None
         for row in events_reader:
             if first_row:
                 first_row = False
@@ -169,6 +169,11 @@ def read_info(topics_file: str, events_file: str) -> DependencyInfo:
             verify_topics(topics_taught, event, 'taught', info)
             topics_needed = [item.strip() for item in row[3].split(';') if item]
             verify_topics(topics_needed, event, 'required', info)
-            info.events.append(Event(current_unit, event, topics_taught, topics_needed))
+            event_obj = Event(current_unit, event, topics_taught, topics_needed)
+            info.events.append(event_obj)
+            event_obj.previous = last_event
+            if last_event is not None:
+                last_event.next = event_obj
+            last_event = event_obj
     info.finalize()
     return info
