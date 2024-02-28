@@ -1,4 +1,5 @@
 import csv
+from io import IOBase
 from typing import Literal
 
 
@@ -129,7 +130,7 @@ def verify_topics(topics: set[str], event: str, prefix: str, info: DependencyInf
             print(f'WARNING: {prefix} topic \'{topic}\' in \'{event}\' not in topics list')
 
 
-def parse_topics(topics_string: str, label: str) -> set[str]:
+def parse_topics(topics_string: str, comment: str) -> set[str]:
     topics = set()
     for topic in topics_string.split(';'):
         topic = topic.strip()
@@ -137,55 +138,53 @@ def parse_topics(topics_string: str, label: str) -> set[str]:
             if topic not in topics:
                 topics.add(topic)
             else:
-                print(f'DATA-ERROR: Ignoring duplicate topic \'{topic}\' in {label}')
+                print(f'DATA-ERROR: Ignoring duplicate topic \'{topic}\' {comment}')
     return topics
 
 
-def read_info(topics_file: str, events_file: str) -> DependencyInfo:
+def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
     info = DependencyInfo()
-    with open(topics_file) as topics_text:
-        topics_reader = csv.reader(topics_text, delimiter='\t')
-        first_row: bool = True
-        for row in topics_reader:
-            if first_row:
-                first_row = False
-                continue
-            topic = row[0].strip()
-            dependencies = parse_topics(row[1], f'{topic} dependencies')
-            info.topics[topic] = Topic(topic, dependencies, row[2].strip())
+    topics_reader = csv.reader(topics_file, delimiter='\t')
+    first_row: bool = True
+    for row in topics_reader:
+        if first_row:
+            first_row = False
+            continue
+        topic = row[0].strip()
+        dependencies = parse_topics(row[1], f'dependency of \'{topic}\'')
+        info.topics[topic] = Topic(topic, dependencies, row[2].strip())
     for topic in info.topics:
         for dependency in info.topics[topic].dependencies:
             if dependency not in info.topics:
                 print(f'DATA-WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
     topic_taught_events: dict[str, str] = {}
-    with open(events_file) as events_text:
-        events_reader = csv.reader(events_text, delimiter='\t')
-        first_row: bool = True
-        current_unit: str | None = None
-        last_event: Event | None = None
-        for row in events_reader:
-            if first_row:
-                first_row = False
-                continue
-            if row[0]:
-                current_unit = row[0]
-            event = row[1]
-            topics_taught = parse_topics(row[2], f'{event} taught')
-            for topic in topics_taught:
-                if topic in topic_taught_events:
-                    print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event}\','
-                          f' but it is already taught in \'{topic_taught_events[topic]}\'')
-                    topic_taught_events[topic] = event
-                else:
-                    topic_taught_events[topic] = event
-            verify_topics(topics_taught, event, 'taught', info)
-            topics_needed = parse_topics(row[3], f'{event} required')
-            verify_topics(topics_needed, event, 'required', info)
-            event_obj = Event(current_unit, event, topics_taught, topics_needed)
-            info.events.append(event_obj)
-            event_obj.previous = last_event
-            if last_event is not None:
-                last_event.next = event_obj
-            last_event = event_obj
+    events_reader = csv.reader(events_file, delimiter='\t')
+    first_row: bool = True
+    current_unit: str | None = None
+    last_event: Event | None = None
+    for row in events_reader:
+        if first_row:
+            first_row = False
+            continue
+        if row[0]:
+            current_unit = row[0]
+        event = row[1]
+        topics_taught = parse_topics(row[2], f'taught in \'{event}\'')
+        for topic in topics_taught:
+            if topic in topic_taught_events:
+                print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event}\','
+                      f' but it is already taught in \'{topic_taught_events[topic]}\'')
+                topic_taught_events[topic] = event
+            else:
+                topic_taught_events[topic] = event
+        verify_topics(topics_taught, event, 'taught', info)
+        topics_needed = parse_topics(row[3], f'required in \'{event}\'')
+        verify_topics(topics_needed, event, 'required', info)
+        event_obj = Event(current_unit, event, topics_taught, topics_needed)
+        info.events.append(event_obj)
+        event_obj.previous = last_event
+        if last_event is not None:
+            last_event.next = event_obj
+        last_event = event_obj
     info.finalize()
     return info

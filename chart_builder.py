@@ -1,5 +1,7 @@
 from typing import Literal
 
+from pathlib import Path
+
 from util import DependencyInfo, Event, qualify
 
 from graphviz import Digraph
@@ -10,10 +12,10 @@ class ChartBuilder:
     Helper class that provides functions for creating a chart.
     """
 
-    def __init__(self, filename_out: str, info: DependencyInfo):
+    def __init__(self, file_out: Path, info: DependencyInfo):
         self.__info: DependencyInfo = info
         """The DependencyInfo used for building the chart."""
-        self.__graph: Digraph = Digraph(filename_out)
+        self.__graph: Digraph = Digraph(str(file_out))
         """The main graph object for the chart."""
         self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""

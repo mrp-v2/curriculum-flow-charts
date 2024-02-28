@@ -1,12 +1,14 @@
+from pathlib import Path
+
 from graphviz import Digraph
 
 from util import DependencyInfo, Event, qualify
 
-from specific_event_dependency_chart import ChartBuilder
+from chart_builder import ChartBuilder
 
 
-def topic_dependencies(info: DependencyInfo, filename_out: str):
-    graph = Digraph(filename_out)
+def topic_chart(info: DependencyInfo, file_out: Path):
+    graph = Digraph(str(file_out))
     graph.attr(label='Topic Dependencies')
 
     for topic in info.topics.values():
@@ -16,8 +18,8 @@ def topic_dependencies(info: DependencyInfo, filename_out: str):
     graph.view()
 
 
-def topic_event_dependencies(info: DependencyInfo, filename_out: str):
-    graph = Digraph(filename_out)
+def topic_by_event_chart(info: DependencyInfo, file_out: Path):
+    graph = Digraph(str(file_out))
     graph.attr(label='Event Based Topic Dependencies')
 
     for event in info.events:
@@ -37,49 +39,19 @@ def topic_event_dependencies(info: DependencyInfo, filename_out: str):
     graph.view()
 
 
-def full_event_dependencies(info: DependencyInfo, filename_out: str):
-    graph = Digraph(filename_out, engine='fdp')
-    graph.attr(label='Event Dependencies')
-    for event in info.events:
-        taught_graph = Digraph(f'{event.name}$taught')
-        taught_graph.attr(cluster='True')
-        taught_graph.attr(label='Taught')
-        for topic in event.topics_taught:
-            qualified_topic = qualify(topic, event, 'taught')
-            taught_graph.node(qualified_topic, label=topic)
-        required_graph = Digraph(f'{event.name}$required')
-        required_graph.attr(cluster='True')
-        required_graph.attr(label='Required')
-        for topic in event.topics_required:
-            topic_taught_event = info.get_most_recent_taught_time(event, topic, True)
-            qualified_topic = qualify(topic, event, 'required')
-            required_graph.node(qualified_topic, label=topic)
-            if topic_taught_event is None:
-                print(f'WARNING: topic \'{topic}\' is not taught before it is required in {event.unit}, {event.name}!')
-            else:
-                graph.edge(qualify(topic, topic_taught_event, 'taught'), qualified_topic)
-        sub_graph = Digraph(event.name)
-        sub_graph.attr(cluster='True')
-        sub_graph.attr(label=event.name)
-        sub_graph.subgraph(taught_graph)
-        sub_graph.subgraph(required_graph)
-        graph.subgraph(sub_graph)
-    graph.view()
-
-
-def specific_event_dependencies(info: DependencyInfo, filename_out: str, focus_event: Event):
+def event_chart(info: DependencyInfo, file_out: Path, focus_event: Event):
     """
     Makes a graph showing the dependencies and dependents (recursively) of a specific event.
     Dependencies are based on the topics required for the event,
     and dependents are based on the topics taught in the event.
     """
-    builder: ChartBuilder = ChartBuilder(filename_out, info)
+    builder: ChartBuilder = ChartBuilder(file_out, info)
     builder.label(f'{focus_event.unit}, {focus_event.name} Dependencies')
-    draw_event_relations(builder, focus_event)
+    __draw_event_relations(builder, focus_event)
     builder.finish().view()
 
 
-def draw_event_relations(builder, focus_event):
+def __draw_event_relations(builder, focus_event):
     if focus_event.topics_taught:
         if focus_event.topics_required:
             for topic in focus_event.topics_required:
@@ -99,9 +71,9 @@ def draw_event_relations(builder, focus_event):
             print(f'ERROR: event {focus_event} has no topics taught or required')
 
 
-def full_chart(info: DependencyInfo, filename_out: str):
-    builder = ChartBuilder(filename_out, info)
+def full_chart(info: DependencyInfo, file_out: Path):
+    builder = ChartBuilder(file_out, info)
     builder.label('Full Course Dependencies')
     for event in info.events:
-        draw_event_relations(builder, event)
+        __draw_event_relations(builder, event)
     builder.finish().view()
