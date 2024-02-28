@@ -1,4 +1,5 @@
 import csv
+from typing import Literal
 
 
 class Event:
@@ -7,11 +8,11 @@ class Event:
     Also stores a link to the previous and next event.
     """
 
-    def __init__(self, unit: str, name: str, topics_taught: list[str], topics_required: list[str]):
+    def __init__(self, unit: str, name: str, topics_taught: set[str], topics_required: set[str]):
         self.unit: str = unit
         self.name: str = name
-        self.topics_taught: list[str] = topics_taught
-        self.topics_required: list[str] = topics_required
+        self.topics_taught: set[str] = topics_taught
+        self.topics_required: set[str] = topics_required
         self.previous: Event | None = None
         self.next: Event | None = None
 
@@ -24,9 +25,9 @@ class Topic:
     Stores information about a topic: its name, dependencies, and description
     """
 
-    def __init__(self, name: str, dependencies: list[str], description: str):
+    def __init__(self, name: str, dependencies: set[str], description: str):
         self.name: str = name
-        self.dependencies: list[str] = dependencies
+        self.dependencies: set[str] = dependencies
         self.description: str = description
 
     def __str__(self):
@@ -99,34 +100,45 @@ class DependencyInfo:
         return self.events[index]
 
 
-def simplify(info: DependencyInfo, topics: list[str], title: str):
+def simplify(info: DependencyInfo, topics: set[str], title: str):
     """
     Takes a list of topics, and removes topics that are dependencies of other topics in the list.
     Prints info about each topic removed in this way.
     """
-    index: int = 0
-    while index < len(topics):
-        topic = topics[index]
+    topics_to_remove: set[str] = set()
+    for topic in topics:
         for other_topic in topics:
-            if other_topic == topic:
+            if other_topic == topic or topic in topics_to_remove:
                 continue
             if info.is_topic_dependent_on(other_topic, topic):
-                print(f'INFO: ignoring topic \'{topic}\' in \'{title}\' because it is a dependency of \''
+                print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{title}\' because it is a dependency of \''
                       f'{other_topic}\', which is also in \'{title}\'')
-                topics.remove(topic)
-                index -= 1
+                topics_to_remove.add(topic)
                 break
-        index += 1
+    for topic in topics_to_remove:
+        topics.remove(topic)
 
 
-def qualify(topic: str, event: Event, modifier: None | str = None) -> str:
+def qualify(topic: str, event: Event, modifier: Literal['taught', 'required'] = None) -> str:
     return f"{event.unit}${event.name}${'' if modifier is None else f'{modifier}$'}{topic}"
 
 
-def verify_topics(topics: list[str], event: str, prefix: str, info: DependencyInfo):
+def verify_topics(topics: set[str], event: str, prefix: str, info: DependencyInfo):
     for topic in topics:
         if topic not in info.topics:
             print(f'WARNING: {prefix} topic \'{topic}\' in \'{event}\' not in topics list')
+
+
+def parse_topics(topics_string: str, label: str) -> set[str]:
+    topics = set()
+    for topic in topics_string.split(';'):
+        topic = topic.strip()
+        if topic:
+            if topic not in topics:
+                topics.add(topic)
+            else:
+                print(f'DATA-ERROR: Ignoring duplicate topic \'{topic}\' in {label}')
+    return topics
 
 
 def read_info(topics_file: str, events_file: str) -> DependencyInfo:
@@ -139,12 +151,12 @@ def read_info(topics_file: str, events_file: str) -> DependencyInfo:
                 first_row = False
                 continue
             topic = row[0].strip()
-            dependencies = [item.strip() for item in row[1].split(';') if item]
+            dependencies = parse_topics(row[1], f'{topic} dependencies')
             info.topics[topic] = Topic(topic, dependencies, row[2].strip())
     for topic in info.topics:
         for dependency in info.topics[topic].dependencies:
             if dependency not in info.topics:
-                print(f'WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
+                print(f'DATA-WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
     topic_taught_events: dict[str, str] = {}
     with open(events_file) as events_text:
         events_reader = csv.reader(events_text, delimiter='\t')
@@ -158,16 +170,16 @@ def read_info(topics_file: str, events_file: str) -> DependencyInfo:
             if row[0]:
                 current_unit = row[0]
             event = row[1]
-            topics_taught = [item.strip() for item in row[2].split(';') if item]
+            topics_taught = parse_topics(row[2], f'{event} taught')
             for topic in topics_taught:
                 if topic in topic_taught_events:
-                    print(f'WARNING: topic \'{topic}\' is taught in \'{event}\','
+                    print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event}\','
                           f' but it is already taught in \'{topic_taught_events[topic]}\'')
                     topic_taught_events[topic] = event
                 else:
                     topic_taught_events[topic] = event
             verify_topics(topics_taught, event, 'taught', info)
-            topics_needed = [item.strip() for item in row[3].split(';') if item]
+            topics_needed = parse_topics(row[3], f'{event} required')
             verify_topics(topics_needed, event, 'required', info)
             event_obj = Event(current_unit, event, topics_taught, topics_needed)
             info.events.append(event_obj)
