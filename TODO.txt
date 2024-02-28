@@ -1,3 +1,10 @@
+learn argparse and pathlib
+
 group topics that always go together(e.g. basic bit -> move, paint, left, right)
 
 maybe show descriptions in a key on the graph
+
+make full chart ordering better
+ideas:
+1. group by unit, or by item number within unit, projects off to side
+2. consolidate arrows

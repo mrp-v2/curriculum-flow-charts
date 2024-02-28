@@ -249,32 +249,3 @@ class ChartBuilder:
             else:
                 raise RuntimeError('Event in event_graphs has no sub-graphs! This should never happen.')
         return self.__graph
-
-
-def specific_event_dependencies(info: DependencyInfo, filename_out: str, focus_event: Event):
-    """
-    Makes a graph showing the dependencies and dependents (recursively) of a specific event.
-    Dependencies are based on the topics required for the event,
-    and dependents are based on the topics taught in the event.
-    """
-    builder: ChartBuilder = ChartBuilder(filename_out, info)
-    builder.label(f'{focus_event.unit}, {focus_event.name} Dependencies')
-    if focus_event.topics_taught:
-        if focus_event.topics_required:
-            for topic in focus_event.topics_required:
-                builder.draw_topic_and_dependencies(topic, focus_event)
-            for topic in focus_event.topics_taught:
-                builder.draw_topic_and_dependencies(topic, focus_event)
-            builder.draw_dependent_tree(focus_event)
-        else:
-            for topic in focus_event.topics_taught:
-                builder.draw_topic_and_dependencies(topic, focus_event)
-            builder.draw_dependent_tree(focus_event)
-    else:
-        if focus_event.topics_required:
-            for topic in focus_event.topics_required:
-                builder.draw_topic_and_dependencies(topic, focus_event)
-        else:
-            print(f'ERROR: event {focus_event} has no topics taught or required')
-    graph = builder.finish()
-    graph.view()

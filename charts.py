@@ -1,6 +1,8 @@
 from graphviz import Digraph
 
-from util import DependencyInfo, qualify
+from util import DependencyInfo, Event, qualify
+
+from specific_event_dependency_chart import ChartBuilder
 
 
 def topic_dependencies(info: DependencyInfo, filename_out: str):
@@ -63,3 +65,43 @@ def full_event_dependencies(info: DependencyInfo, filename_out: str):
         sub_graph.subgraph(required_graph)
         graph.subgraph(sub_graph)
     graph.view()
+
+
+def specific_event_dependencies(info: DependencyInfo, filename_out: str, focus_event: Event):
+    """
+    Makes a graph showing the dependencies and dependents (recursively) of a specific event.
+    Dependencies are based on the topics required for the event,
+    and dependents are based on the topics taught in the event.
+    """
+    builder: ChartBuilder = ChartBuilder(filename_out, info)
+    builder.label(f'{focus_event.unit}, {focus_event.name} Dependencies')
+    draw_event_relations(builder, focus_event)
+    builder.finish().view()
+
+
+def draw_event_relations(builder, focus_event):
+    if focus_event.topics_taught:
+        if focus_event.topics_required:
+            for topic in focus_event.topics_required:
+                builder.draw_topic_and_dependencies(topic, focus_event)
+            for topic in focus_event.topics_taught:
+                builder.draw_topic_and_dependencies(topic, focus_event)
+            builder.draw_dependent_tree(focus_event)
+        else:
+            for topic in focus_event.topics_taught:
+                builder.draw_topic_and_dependencies(topic, focus_event)
+            builder.draw_dependent_tree(focus_event)
+    else:
+        if focus_event.topics_required:
+            for topic in focus_event.topics_required:
+                builder.draw_topic_and_dependencies(topic, focus_event)
+        else:
+            print(f'ERROR: event {focus_event} has no topics taught or required')
+
+
+def full_chart(info: DependencyInfo, filename_out: str):
+    builder = ChartBuilder(filename_out, info)
+    builder.label('Full Course Dependencies')
+    for event in info.events:
+        draw_event_relations(builder, event)
+    builder.finish().view()

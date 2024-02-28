@@ -4,9 +4,7 @@ import os.path
 
 from util import Event, read_info
 
-from basic_charts import topic_dependencies, topic_event_dependencies, full_event_dependencies
-
-from specific_event_dependency_chart import specific_event_dependencies
+from charts import topic_dependencies, topic_event_dependencies, full_event_dependencies, specific_event_dependencies, full_chart
 
 
 def main(topics_file: str, events_file: str, args: list[str]):
@@ -36,6 +34,8 @@ def main(topics_file: str, events_file: str, args: list[str]):
                 specific_event_dependencies(info, f'{output_path}{unit}_{name}event-dependencies', event)
         else:
             full_event_dependencies(info, f'{output_path}full-event-dependencies')
+    if '--full' in args:
+        full_chart(info, f'{output_path}full')
 
 
 if __name__ == '__main__':
