@@ -7,38 +7,116 @@ from util import DependencyInfo, Event, qualify
 from graphviz import Digraph
 
 
-class ChartBuilder:
-    """
-    Helper class that provides functions for creating a chart.
-    """
+class BaseChartBuilder:
+    """The base class for chart builders."""
 
-    def __init__(self, file_out: Path, info: DependencyInfo):
-        self.__info: DependencyInfo = info
+    def __init__(self, info: DependencyInfo, file_out: Path):
+        self._info: DependencyInfo = info
         """The DependencyInfo used for building the chart."""
-        self.__graph: Digraph = Digraph(str(file_out))
+        self._graph: Digraph = Digraph(str(file_out))
         """The main graph object for the chart."""
-        self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
-        """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
-        self.__nodes_drawn: list[str] = []
+        self._nodes_drawn: list[str] = []
         """Tracks all the nodes drawn to prevent duplicate nodes."""
         self.__edges_drawn: list[tuple[str, str]] = []
         """Tracks all edges drawn to prevent duplicate edges."""
 
-    def label(self, label: str):
-        """
-        Sets the label for the graph.
-        :param label: The label for the graph.
-        """
-        self.__graph.attr(label=label)
-
-    def __draw_edge(self, tail: str, head: str):
+    def _draw_edge(self, tail: str, head: str):
         """
         Draws an edge connecting two nodes. Does nothing if the edge has already been drawn.
         :param tail: The qualified name of the tail node.
         :param head: The qualified name of the head node.
         """
         if (tail, head) not in self.__edges_drawn:
-            self.__graph.edge(tail, head)
+            self._graph.edge(tail, head)
+            self.__edges_drawn.append((tail, head))
+
+    def label(self, label: str):
+        """
+        Sets the label for the graph.
+        :param label: The label for the graph.
+        """
+        self._graph.attr(label=label)
+
+    def finish(self):
+        """
+        Finalizes the graph and returns it.
+        """
+        return self._graph
+
+
+class TopicChartBuilder(BaseChartBuilder):
+    """Draws charts using only topics."""
+
+    def __init__(self, info: DependencyInfo, file_out: Path):
+        super().__init__(info, file_out)
+
+    def __draw_topic_only(self, topic: str):
+        if topic not in self._nodes_drawn:
+            self._graph.node(topic)
+            self._nodes_drawn.append(topic)
+
+    def draw_topic_and_dependencies(self, topic: str):
+        """
+        Draws a topic, and edges connecting it to its dependencies.
+        """
+        self.__draw_topic_only(topic.__str__())
+        for dependency in self._info.topics[topic].dependencies:
+            self._draw_edge(dependency, topic)
+
+
+class EventChartBuilder(BaseChartBuilder):
+    """Draws charts focusing on topics, but grouping topics by event."""
+
+    def __init__(self, info: DependencyInfo, file_out: Path):
+        super().__init__(info, file_out)
+        self.__event_graphs: dict[Event, Digraph] = {}
+        """Stores the sub-graphs for each event."""
+
+    def __draw_topic_only(self, topic: str, event: Event) -> str:
+        if event not in self.__event_graphs:
+            self.__event_graphs[event] = Digraph(f'{event.unit}${event.name}')
+            self.__event_graphs[event].attr(cluster='True')
+            self.__event_graphs[event].attr(label=event.name)
+        qualified_name = qualify(topic, event)
+        if qualified_name not in self._nodes_drawn:
+            self.__event_graphs[event].node(qualified_name, topic)
+            self._nodes_drawn.append(qualified_name)
+        return qualified_name
+
+    def draw_event_topics_and_dependencies(self, event: Event):
+        for topic in event.topics_taught:
+            qualified_name = self.__draw_topic_only(topic, event)
+            last_taught_time = self._info.get_most_recent_taught_time(event, topic)
+            if last_taught_time:
+                self._draw_edge(qualify(topic, last_taught_time), qualified_name)
+            for dependency in self._info.topics[topic].dependencies:
+                dependency_taught_time = self._info.get_most_recent_taught_time(event, dependency, True)
+                self._draw_edge(qualify(dependency, dependency_taught_time), qualified_name)
+
+    def finish(self):
+        for event in self.__event_graphs:
+            self._graph.subgraph(self.__event_graphs[event])
+        return super().finish()
+
+
+class ChartBuilder(BaseChartBuilder):
+    """
+    Helper class that provides functions for creating a chart.
+    """
+
+    def __init__(self, info: DependencyInfo, file_out: Path):
+        super().__init__(info, file_out)
+        self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
+        """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
+
+    def _draw_edge(self, tail: str, head: str):
+        """
+        Draws an edge connecting two nodes. Does nothing if the edge has already been drawn.
+        :param tail: The qualified name of the tail node.
+        :param head: The qualified name of the head node.
+        """
+        if (tail, head) not in self.__edges_drawn:
+            self._graph.edge(tail, head)
             self.__edges_drawn.append((tail, head))
 
     def __draw_taught(self, event: Event, topic: str) -> str:
@@ -55,7 +133,7 @@ class ChartBuilder:
             taught.attr(cluster='True')
             self.__event_graphs[event] = (required, taught)
         taught.node(qualified_name, topic)
-        self.__nodes_drawn.append(qualified_name)
+        self._nodes_drawn.append(qualified_name)
         return qualified_name
 
     def __draw_required(self, event: Event, topic: str) -> str:
@@ -72,10 +150,11 @@ class ChartBuilder:
             required.attr(cluster='True')
             self.__event_graphs[event] = (required, taught)
         required.node(qualified_name, topic)
-        self.__nodes_drawn.append(qualified_name)
+        self._nodes_drawn.append(qualified_name)
         return qualified_name
 
-    def __draw_topic_only(self, topic: str, event: Event, default_side: Literal['taught', 'required'] = None) -> str:
+    def __draw_topic_only(self, topic: str, event: Event,
+                          default_side: Literal['taught', 'required'] = None) -> str:
         """
         Draws a topic under an event.
         :param topic: The topic to draw.
@@ -99,7 +178,7 @@ class ChartBuilder:
             qualified_name = qualify(topic, event, 'required')
         else:
             raise ValueError('Given topic and event aren\'t related')
-        if qualified_name not in self.__nodes_drawn:
+        if qualified_name not in self._nodes_drawn:
             if event not in self.__event_graphs:
                 self.__event_graphs[event] = (None, None)
             if topic in event.topics_taught and topic in event.topics_required:
@@ -130,10 +209,10 @@ class ChartBuilder:
                  and the first event where the topic was taught
         """
         name = self.__draw_topic_only(topic, event, 'taught')
-        previous_taught_time = self.__info.get_most_recent_taught_time(event, topic)
+        previous_taught_time = self._info.get_most_recent_taught_time(event, topic)
         if previous_taught_time is not None and previous_taught_time != event:
             recent_qualified_name, first_name, first_event = self.__draw_topic_helper(topic, previous_taught_time)
-            self.__draw_edge(recent_qualified_name, name)
+            self._draw_edge(recent_qualified_name, name)
             return name, first_name, first_event
         else:
             return name, name, event
@@ -154,12 +233,12 @@ class ChartBuilder:
         :param topic: The topic to draw the dependencies of.
         :param parent_event: The event to use as both the default event and parent event when calling add_topic.
         """
-        for dependency in self.__info.topics[topic].dependencies:
-            self.draw_topic_and_dependencies(dependency, parent_event, dependency is not topic,
-                                             qualify(topic, parent_event, 'taught'))
+        for dependency in self._info.topics[topic].dependencies:
+            self.draw_sided_topic_and_dependencies(dependency, parent_event, dependency is not topic,
+                                                   qualify(topic, parent_event, 'taught'))
 
-    def draw_topic_and_dependencies(self, topic: str, default_event: Event, include_start: bool = True,
-                                    parent_node: str | None = None):
+    def draw_sided_topic_and_dependencies(self, topic: str, default_event: Event, include_start: bool = True,
+                                          parent_node: str | None = None):
         """
         Draws a node for a topic, and recursively draws nodes for its dependencies and draws edges connecting it to its
         dependencies.
@@ -172,7 +251,7 @@ class ChartBuilder:
                             starting at search_start.
         """
         if parent_node:
-            topic_event = self.__info.get_most_recent_taught_time(default_event, topic, include_start)
+            topic_event = self._info.get_most_recent_taught_time(default_event, topic, include_start)
         else:
             topic_event = default_event
         if topic_event is None:
@@ -182,7 +261,7 @@ class ChartBuilder:
             original_event = self.__draw_topic(topic, topic_event)
             if parent_node is not None:
                 name = qualify(topic, topic_event, 'taught')
-                self.__draw_edge(name, parent_node)
+                self._draw_edge(name, parent_node)
             self.__draw_dependencies(topic, original_event)
 
     def __draw_dependent_tree_helper(self, event: Event, topics_of_interest: dict[str, str]):
@@ -194,24 +273,24 @@ class ChartBuilder:
         for topic in event.topics_taught:
             if topic in topics_of_interest:
                 name = self.__draw_topic_only(topic, event, 'taught')
-                last_taught_time = self.__info.get_most_recent_taught_time(event, topic)
+                last_taught_time = self._info.get_most_recent_taught_time(event, topic)
                 tail_name = qualify(topic, last_taught_time, 'taught')
-                self.__draw_edge(tail_name, name)
+                self._draw_edge(tail_name, name)
                 topics_of_interest[topic] = name
             to_add: list[tuple[str, str]] = []
             for topic_of_interest in topics_of_interest:
-                if topic_of_interest in self.__info.topics[topic].dependencies:
+                if topic_of_interest in self._info.topics[topic].dependencies:
                     name = self.__draw_topic_only(topic, event, 'taught')
-                    last_taught_time = self.__info.get_most_recent_taught_time(event, topic_of_interest, True)
+                    last_taught_time = self._info.get_most_recent_taught_time(event, topic_of_interest, True)
                     tail_name = qualify(topic_of_interest, last_taught_time, 'taught')
-                    self.__draw_edge(tail_name, name)
+                    self._draw_edge(tail_name, name)
                     to_add.append((topic, name))
             for topic_to_set, qualified_name in to_add:
                 topics_of_interest[topic_to_set] = qualified_name
         for topic in event.topics_required:
             if topic in topics_of_interest:
                 name = self.__draw_topic_only(topic, event, 'required')
-                self.__draw_edge(topics_of_interest[topic], name)
+                self._draw_edge(topics_of_interest[topic], name)
                 topics_of_interest[topic] = name
         if event.next:
             self.__draw_dependent_tree_helper(event.next, topics_of_interest)
@@ -227,6 +306,25 @@ class ChartBuilder:
             topics_of_interest[topic] = qualify(topic, event, 'taught')
         self.__draw_dependent_tree_helper(event.next, topics_of_interest)
 
+    def draw_event_relations(self, event: Event):
+        if event.topics_taught:
+            if event.topics_required:
+                for topic in event.topics_required:
+                    self.draw_sided_topic_and_dependencies(topic, event)
+                for topic in event.topics_taught:
+                    self.draw_sided_topic_and_dependencies(topic, event)
+                self.draw_dependent_tree(event)
+            else:
+                for topic in event.topics_taught:
+                    self.draw_sided_topic_and_dependencies(topic, event)
+                self.draw_dependent_tree(event)
+        else:
+            if event.topics_required:
+                for topic in event.topics_required:
+                    self.draw_sided_topic_and_dependencies(topic, event)
+            else:
+                print(f'ERROR: event {event} has no topics taught or required')
+
     def finish(self):
         """
         Finalizes the graph and returns it.
@@ -241,13 +339,13 @@ class ChartBuilder:
                 event_graph.attr(label=event.name)
                 event_graph.subgraph(required_graph)
                 event_graph.subgraph(taught_graph)
-                self.__graph.subgraph(event_graph)
+                self._graph.subgraph(event_graph)
             elif required_graph is not None:
                 required_graph.attr(label=event.name)
-                self.__graph.subgraph(required_graph)
+                self._graph.subgraph(required_graph)
             elif taught_graph is not None:
                 taught_graph.attr(label=event.name)
-                self.__graph.subgraph(taught_graph)
+                self._graph.subgraph(taught_graph)
             else:
                 raise RuntimeError('Event in event_graphs has no sub-graphs! This should never happen.')
-        return self.__graph
+        return self._graph

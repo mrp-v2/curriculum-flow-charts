@@ -2,3 +2,6 @@ make full chart ordering better
 ideas:
 1. group by unit, or by item number within unit, projects off to side
 2. consolidate arrows
+
+command-line:
+-make event arg allow just event name, as long as there is only one event with that name
