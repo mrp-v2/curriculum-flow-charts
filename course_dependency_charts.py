@@ -41,10 +41,17 @@ if __name__ == '__main__':
                         help='''The path to a tsv file containing event information.
     One event per row - the first row is assumed to be a header and is ignored.
     Events are assumed to be in chronological order first to last top to bottom.
-    The first column specifies the unit. After a unit is specified, it is assumed
+    The first column specifies the unit number (e.g. 'Unit 3'). After a unit is specified, it is assumed
     to be the same in all following events until another unit is specified.
-    The second column is a semicolon seperated list of topics taught in the event.
-    The third column is a semicolon seperated list of topics required for the event.''')
+    The second column specifies the name of the event. 
+    The name should include an event type (lecture, lab, homework (hw), or project) and an event id starting with the 
+    unit number, followed by a letter (e.g. '1a', '4c').
+    Events are chronologically ordered by unit, then the alphabetical part of their id
+    (Example event name: 'Lecture 3b - Learning stuff'). 
+    If there is only one event of a type in a unit, then the alphabetical part of the id may be omitted.
+    Extra parts of the event name should come after a hyphen.
+    The third column is a semicolon seperated list of topics taught in the event.
+    The fourth column is a semicolon seperated list of topics required for the event.''')
     parser.add_argument('-output_dir', help='''Specifies a directory to save output files to.
     Defaults to the current working directory.''')
     parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')

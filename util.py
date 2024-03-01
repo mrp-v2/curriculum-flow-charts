@@ -3,6 +3,51 @@ from io import IOBase
 from typing import Literal
 
 
+def decide_event_type_and_number(name: str) -> tuple[Literal['lecture', 'lab', 'homework', 'project'], int, str | None]:
+    short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
+    lecture = False
+    lab = False
+    homework = False
+    project = False
+    if 'lecture' in short_name:
+        lecture = True
+    if 'lab' in short_name:
+        lab = True
+    if 'homework' in short_name or 'hw' in short_name:
+        homework = True
+    if 'project' in short_name:
+        project = True
+    event_type: Literal['lecture', 'lab', 'homework', 'project']
+    if lecture:
+        if lab or homework or project:
+            raise ValueError(f'Cannot distinguish event type of {name}')
+        event_type = 'lecture'
+    elif lab:
+        if homework or project:
+            raise ValueError(f'Cannot distinguish event type of {name}')
+        event_type = 'lab'
+    elif homework:
+        if project:
+            raise ValueError(f'Cannot distinguish event type of {name}')
+        event_type = 'homework'
+    elif project:
+        event_type = 'project'
+    else:
+        raise ValueError(f'Cannot distinguish event type of {name}')
+    number_start: int = -1
+    number_end: int = -1
+    for i in range(len(short_name)):
+        if number_start == -1 and short_name[i].isdigit():
+            number_start = i
+        elif number_start > -1 and number_end == -1 and not short_name[i].isdigit():
+            number_end = i
+        elif number_end > -1 and short_name[i].isdigit():
+            raise ValueError(f'Cannot distinguish event number of {name}')
+    unit_number = int(short_name[number_start:number_end])
+    event_id = short_name[number_end] if short_name[number_end].strip() else None
+    return event_type, unit_number, event_id
+
+
 class Event:
     """
     Stores information about an event: its unit, name, the topics taught, and the topics required.
@@ -16,6 +61,10 @@ class Event:
         self.topics_required: set[str] = topics_required
         self.previous: Event | None = None
         self.next: Event | None = None
+        event_type, unit_number, event_id = decide_event_type_and_number(self.name)
+        self.event_type: Literal['lecture', 'lab', 'homework', 'project'] = event_type
+        self.unit_number: int = unit_number
+        self.event_id: str | None = event_id
 
     def __str__(self):
         return self.name
@@ -66,6 +115,20 @@ class DependencyInfo:
         For each topic, removes dependencies that are dependencies of other dependencies for that topic.
         Prints information regarding removals to the console.
         """
+        event_types_seen: dict[int, dict[Literal['lecture', 'lab', 'homework', 'project'], list[Event]]] = {}
+        for event in self.events:
+            if event.unit_number not in event_types_seen:
+                event_types_seen[event.unit_number] = {}
+            if event.event_type not in event_types_seen[event.unit_number]:
+                event_types_seen[event.unit_number][event.event_type] = []
+            event_types_seen[event.unit_number][event.event_type].append(event)
+        for unit in event_types_seen:
+            for event_type in event_types_seen[unit]:
+                if len(event_types_seen[unit][event_type]) > 1:
+                    for event in event_types_seen[unit][event_type]:
+                        if event.event_id is None:
+                            raise ValueError(f'Multiple events of type \'{event_type}\' in unit {unit} but {event}'
+                                             f' has no event id.')
         for topic in self.topics.values():
             simplify(self, topic.dependencies, topic.__str__())
         unused_topics = [item for item in self.topics]
