@@ -3,6 +3,7 @@ from io import IOBase
 from typing import Literal
 
 EventType = Literal['lecture', 'lab', 'homework', 'project']
+Side = Literal['taught', 'required']
 
 
 def decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
@@ -19,7 +20,7 @@ def decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]
         homework = True
     if 'project' in short_name:
         project = True
-    event_type: Literal['lecture', 'lab', 'homework', 'project']
+    event_type: EventType
     if lecture:
         if lab or homework or project:
             raise ValueError(f'Cannot distinguish event type of {name}')
@@ -93,6 +94,8 @@ class Event:
                 return False
             if event.event_id is None:
                 return self.event_id is not None
+            if self.event_id is None:
+                return False
             if self.event_id < event.event_id:
                 return True
             if self.event_id > event.event_id:
@@ -211,7 +214,7 @@ def simplify(info: DependencyInfo, topics: set[str], title: str):
         topics.remove(topic)
 
 
-def qualify(topic: str, event: Event, modifier: Literal['taught', 'required'] = None) -> str:
+def qualify(topic: str, event: Event, modifier: Side = None) -> str:
     return f"{event.unit}${event.name}${'' if modifier is None else f'{modifier}$'}{topic}"
 
 

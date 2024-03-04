@@ -40,6 +40,5 @@ def event_chart(info: DependencyInfo, file_out: Path, focus_event: Event):
 def full_chart(info: DependencyInfo, file_out: Path):
     builder = FullChartBuilder(info, file_out)
     builder.label('Full Course Dependencies')
-    for event in info.events:
-        builder.draw_event_relations(event)
+    builder.draw_full()
     builder.finish().view()
