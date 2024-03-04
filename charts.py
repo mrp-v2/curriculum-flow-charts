@@ -1,10 +1,8 @@
 from pathlib import Path
 
-from graphviz import Digraph
+from util import DependencyInfo, Event
 
-from util import DependencyInfo, Event, qualify
-
-from chart_builder import TopicChartBuilder, EventChartBuilder, ChartBuilder
+from chart_builder import TopicChartBuilder, TopicByEventChartBuilder, EventChartBuilder, FullChartBuilder
 
 
 def topic_chart(info: DependencyInfo, file_out: Path):
@@ -18,7 +16,7 @@ def topic_chart(info: DependencyInfo, file_out: Path):
 
 
 def topic_by_event_chart(info: DependencyInfo, file_out: Path):
-    builder = EventChartBuilder(info, file_out)
+    builder = TopicByEventChartBuilder(info, file_out)
     builder.label('Topic Dependencies By Event')
 
     for event in info.events:
@@ -33,14 +31,14 @@ def event_chart(info: DependencyInfo, file_out: Path, focus_event: Event):
     Dependencies are based on the topics required for the event,
     and dependents are based on the topics taught in the event.
     """
-    builder: ChartBuilder = ChartBuilder(info, file_out)
+    builder: EventChartBuilder = EventChartBuilder(info, file_out)
     builder.label(f'{focus_event.unit}, {focus_event.name} Dependencies')
     builder.draw_event_relations(focus_event)
     builder.finish().view()
 
 
 def full_chart(info: DependencyInfo, file_out: Path):
-    builder = ChartBuilder(info, file_out)
+    builder = FullChartBuilder(info, file_out)
     builder.label('Full Course Dependencies')
     for event in info.events:
         builder.draw_event_relations(event)

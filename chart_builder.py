@@ -64,7 +64,7 @@ class TopicChartBuilder(BaseChartBuilder):
             self._draw_edge(dependency, topic)
 
 
-class EventChartBuilder(BaseChartBuilder):
+class TopicByEventChartBuilder(BaseChartBuilder):
     """Draws charts focusing on topics, but grouping topics by event."""
 
     def __init__(self, info: DependencyInfo, file_out: Path):
@@ -99,57 +99,34 @@ class EventChartBuilder(BaseChartBuilder):
         return super().finish()
 
 
-class ChartBuilder(BaseChartBuilder):
-    """
-    Helper class that provides functions for creating a chart.
-    """
+class EventChartBuilder(BaseChartBuilder):
+    """Draws charts that focus on a single event, drawing all things related to that event."""
 
     def __init__(self, info: DependencyInfo, file_out: Path):
         super().__init__(info, file_out)
         self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
 
-    def _draw_edge(self, tail: str, head: str):
+    def __draw_sided_topic(self, topic: str, event: Event, side: Literal['taught', 'required']) -> str:
         """
-        Draws an edge connecting two nodes. Does nothing if the edge has already been drawn.
-        :param tail: The qualified name of the tail node.
-        :param head: The qualified name of the head node.
-        """
-        if (tail, head) not in self.__edges_drawn:
-            self._graph.edge(tail, head)
-            self.__edges_drawn.append((tail, head))
-
-    def __draw_taught(self, event: Event, topic: str) -> str:
-        """
-        Draws a topic under the taught graph of an event.
+        Draws a topic under the specified graph of an event.
+        :param topic: The name of the topic to draw.
         :param event: The event to draw the topic under.
-        :param topic: The name of the topic.
-        :return: The qualified name of the topic's node.
+        :param side: The sub-graph of the event to draw the topic in. Either 'taught' or 'required'.
+        :return: The qualified name of the topic.
         """
-        qualified_name = qualify(topic, event, 'taught')
+        qualified_name = qualify(topic, event, side)
         required, taught = self.__event_graphs[event]
-        if taught is None:
-            taught = Digraph(f'{event.name}$taught')
-            taught.attr(cluster='True')
-            self.__event_graphs[event] = (required, taught)
-        taught.node(qualified_name, topic)
-        self._nodes_drawn.append(qualified_name)
-        return qualified_name
-
-    def __draw_required(self, event: Event, topic: str) -> str:
-        """
-        Draws a topic under the required graph of an event.
-        :param event: The event to draw the topic under.
-        :param topic: The name of the topic.
-        :return: The qualified name of the topic's node.
-        """
-        qualified_name = qualify(topic, event, 'required')
-        required, taught = self.__event_graphs[event]
-        if required is None:
-            required = Digraph(f'{event.name}$required')
-            required.attr(cluster='True')
-            self.__event_graphs[event] = (required, taught)
-        required.node(qualified_name, topic)
+        temp = (required if side == 'required' else taught)
+        if temp is None:
+            temp = Digraph(f'{event.name}${side}')
+            temp.attr(cluster='True')
+            if side == 'required':
+                required = temp
+            else:
+                taught = temp
+        self.__event_graphs[event] = (required, taught)
+        temp.node(qualified_name, topic)
         self._nodes_drawn.append(qualified_name)
         return qualified_name
 
@@ -183,16 +160,16 @@ class ChartBuilder(BaseChartBuilder):
                 self.__event_graphs[event] = (None, None)
             if topic in event.topics_taught and topic in event.topics_required:
                 if default_side == 'taught':
-                    self.__draw_taught(event, topic)
+                    self.__draw_sided_topic(topic, event, 'taught')
                 elif default_side == 'required':
-                    self.__draw_required(event, topic)
+                    self.__draw_sided_topic(topic, event, 'required')
                 else:
                     raise ValueError('If a topic is both taught and required by an event, '
                                      'a default side must be specified')
             elif topic in event.topics_taught:
-                self.__draw_taught(event, topic)
+                self.__draw_sided_topic(topic, event, 'taught')
             elif topic in event.topics_required:
-                self.__draw_required(event, topic)
+                self.__draw_sided_topic(topic, event, 'required')
             else:
                 raise ValueError('Given topic and event aren\'t related!')
         return qualified_name
@@ -325,27 +302,66 @@ class ChartBuilder(BaseChartBuilder):
             else:
                 print(f'ERROR: event {event} has no topics taught or required')
 
+    def _finish_event(self, event: Event, parent_graph: Digraph):
+        required_graph, taught_graph = self.__event_graphs[event]
+        if required_graph is not None and taught_graph is not None:
+            required_graph.attr(label='Required')
+            taught_graph.attr(label='Taught')
+            event_graph = Digraph(event.name)
+            event_graph.attr(cluster='True')
+            event_graph.attr(label=event.name)
+            event_graph.subgraph(required_graph)
+            event_graph.subgraph(taught_graph)
+            parent_graph.subgraph(event_graph)
+        elif required_graph is not None:
+            required_graph.attr(label=event.name)
+            parent_graph.subgraph(required_graph)
+        elif taught_graph is not None:
+            taught_graph.attr(label=event.name)
+            parent_graph.subgraph(taught_graph)
+        else:
+            raise RuntimeError('Event in event_graphs has no sub-graphs! This should never happen.')
+
     def finish(self):
         """
         Finalizes the graph and returns it.
         """
         for event in self.__event_graphs:
-            required_graph, taught_graph = self.__event_graphs[event]
-            if required_graph is not None and taught_graph is not None:
-                required_graph.attr(label='Required')
-                taught_graph.attr(label='Taught')
-                event_graph = Digraph(event.name)
-                event_graph.attr(cluster='True')
-                event_graph.attr(label=event.name)
-                event_graph.subgraph(required_graph)
-                event_graph.subgraph(taught_graph)
-                self._graph.subgraph(event_graph)
-            elif required_graph is not None:
-                required_graph.attr(label=event.name)
-                self._graph.subgraph(required_graph)
-            elif taught_graph is not None:
-                taught_graph.attr(label=event.name)
-                self._graph.subgraph(taught_graph)
-            else:
-                raise RuntimeError('Event in event_graphs has no sub-graphs! This should never happen.')
+            self._finish_event(event, self._graph)
+        return self._graph
+
+
+class FullChartBuilder(EventChartBuilder):
+    def __init__(self, info: DependencyInfo, file_out: Path):
+        super().__init__(info, file_out)
+        self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
+        """Stores the parent graph for sub-graphs for each event id"""
+
+    def _finish_event(self, event: Event, parent_graph: Digraph):
+        if event.unit_number not in self._event_id_graphs:
+            self._event_id_graphs[event.unit_number] = {}
+        if event.event_id not in self._event_id_graphs[event.unit_number]:
+            temp = Digraph(f'Unit {event.unit_number}{f"${event.event_id}" if event.event_id else ""}')
+            temp.attr(cluster='True')
+            temp.attr(label=event.event_id)
+            temp.attr(margin='64')
+            if event.event_id:
+                temp.attr(newrank='True')
+                temp.attr(rank='same')
+            self._event_id_graphs[event.unit_number][event.event_id] = temp
+        return super()._finish_event(event, self._event_id_graphs[event.unit_number][event.event_id])
+
+    def finish(self):
+        super().finish()
+        for unit in self._event_id_graphs:
+            if None not in self._event_id_graphs[unit]:
+                temp = Digraph(f'Unit {unit}')
+                temp.attr(cluster='True')
+                temp.attr(label=f'Unit {unit}')
+                self._event_id_graphs[unit][None] = temp
+            for event_id in self._event_id_graphs[unit]:
+                if event_id is None:
+                    continue
+                self._event_id_graphs[unit][None].subgraph(self._event_id_graphs[unit][event_id])
+            self._graph.subgraph(self._event_id_graphs[unit][None])
         return self._graph
