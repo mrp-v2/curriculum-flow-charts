@@ -48,7 +48,7 @@ if __name__ == '__main__':
     unit number, followed by a letter (e.g. '1a', '4c').
     Events are chronologically ordered by unit, then the alphabetical part of their id
     (Example event name: 'Lecture 3b - Learning stuff'). 
-    If there is only one event of a type in a unit, then the alphabetical part of the id may be omitted.
+    Projects may have the alphabetical part of their id omitted, and there may only be one project in each unit.
     Extra parts of the event name should come after a hyphen.
     The third column is a semicolon seperated list of topics taught in the event.
     The fourth column is a semicolon seperated list of topics required for the event.''')

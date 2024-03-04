@@ -2,8 +2,10 @@ import csv
 from io import IOBase
 from typing import Literal
 
+EventType = Literal['lecture', 'lab', 'homework', 'project']
 
-def decide_event_type_and_number(name: str) -> tuple[Literal['lecture', 'lab', 'homework', 'project'], int, str | None]:
+
+def decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
     short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
     lecture = False
     lab = False
@@ -45,7 +47,20 @@ def decide_event_type_and_number(name: str) -> tuple[Literal['lecture', 'lab', '
             raise ValueError(f'Cannot distinguish event number of {name}')
     unit_number = int(short_name[number_start:number_end])
     event_id = short_name[number_end] if short_name[number_end].strip() else None
+    if event_id is None:
+        if event_type != 'project':
+            raise ValueError(f'Event {name} is missing an id')
     return event_type, unit_number, event_id
+
+
+def _event_type_less_than(type1: EventType, type2: EventType) -> bool:
+    if type1 == 'lecture':
+        return type2 != 'lecture'
+    if type1 == 'lab':
+        return type2 != 'lecture' and type2 != 'lab'
+    if type1 == 'homework':
+        return type2 == 'project'
+    return False
 
 
 class Event:
@@ -62,12 +77,29 @@ class Event:
         self.previous: Event | None = None
         self.next: Event | None = None
         event_type, unit_number, event_id = decide_event_type_and_number(self.name)
-        self.event_type: Literal['lecture', 'lab', 'homework', 'project'] = event_type
+        self.event_type: EventType = event_type
         self.unit_number: int = unit_number
         self.event_id: str | None = event_id
 
     def __str__(self):
         return self.name
+
+    def __lt__(self, other) -> bool:
+        if isinstance(other, Event):
+            event: Event = other
+            if self.unit_number < event.unit_number:
+                return True
+            if self.unit_number > event.unit_number:
+                return False
+            if event.event_id is None:
+                return self.event_id is not None
+            if self.event_id < event.event_id:
+                return True
+            if self.event_id > event.event_id:
+                return False
+            return _event_type_less_than(self.event_type, event.event_type)
+
+        return False
 
 
 class Topic:
@@ -111,26 +143,22 @@ class DependencyInfo:
 
     def finalize(self):
         """
+        Ensures there is only one project for each unit.
         For each event, removes required topics that are dependencies of other required topics for that event.
         For each topic, removes dependencies that are dependencies of other dependencies for that topic.
         Prints information regarding removals to the console.
         """
-        event_types_seen: dict[int, dict[Literal['lecture', 'lab', 'homework', 'project'], list[Event]]] = {}
+        # Ensure only one project per unit
+        units_with_projects: set[int] = set()
         for event in self.events:
-            if event.unit_number not in event_types_seen:
-                event_types_seen[event.unit_number] = {}
-            if event.event_type not in event_types_seen[event.unit_number]:
-                event_types_seen[event.unit_number][event.event_type] = []
-            event_types_seen[event.unit_number][event.event_type].append(event)
-        for unit in event_types_seen:
-            for event_type in event_types_seen[unit]:
-                if len(event_types_seen[unit][event_type]) > 1:
-                    for event in event_types_seen[unit][event_type]:
-                        if event.event_id is None:
-                            raise ValueError(f'Multiple events of type \'{event_type}\' in unit {unit} but {event}'
-                                             f' has no event id.')
+            if event.event_type == 'project':
+                if event.unit_number in units_with_projects:
+                    raise ValueError(f"Unit {event.unit_number} has multiple projects!")
+                units_with_projects.add(event.unit_number)
+        # Simplify topic dependencies
         for topic in self.topics.values():
             simplify(self, topic.dependencies, topic.__str__())
+        # simplify event topics and ensure all topics are referenced in an event
         unused_topics = [item for item in self.topics]
         for event in self.events:
             simplify(self, event.topics_required, event.__str__())
@@ -141,7 +169,7 @@ class DependencyInfo:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
         for topic in unused_topics:
-            print(f'INFO: topic \'{topic}\' is not used in any event')
+            print(f'DATA-WARNING: topic \'{topic}\' is not used in any event')
 
     def get_most_recent_taught_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
         index: int = self.events.index(start)
