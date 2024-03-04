@@ -334,6 +334,7 @@ class EventChartBuilder(BaseChartBuilder):
 class FullChartBuilder(EventChartBuilder):
     def __init__(self, info: DependencyInfo, file_out: Path):
         super().__init__(info, file_out)
+        self._graph.attr(splines='ortho')
         self.__event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
         """Stores the parent graph for sub-graphs for each event id"""
         self._latest_required_times: dict[str, tuple[Event, str]] = {}
@@ -380,7 +381,7 @@ class FullChartBuilder(EventChartBuilder):
             temp = Digraph(f'Unit {event.unit_number}{f"${event.event_id}" if event.event_id else ""}')
             temp.attr(cluster='True')
             temp.attr(label=event.event_id)
-            temp.attr(margin='64')
+            temp.attr(margin='32')
             if event.event_id:
                 temp.attr(newrank='True')
                 temp.attr(rank='same')
