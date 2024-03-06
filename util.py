@@ -75,7 +75,6 @@ class Event:
         self.name: str = name
         self.topics_taught: set[str] = topics_taught
         self.topics_required: set[str] = topics_required
-        self.previous: Event | None = None
         self.next: Event | None = None
         event_type, unit_number, event_id = decide_event_type_and_number(self.name)
         self.event_type: EventType = event_type
@@ -133,16 +132,39 @@ class DependencyInfo:
         """
         Returns True if dependency is a dependency - or a sub-dependency - of topic.
         """
+        return self.get_topic_dependency_depth(topic, dependency) is not None
+
+    def get_topic_dependency_depth(self, topic: str, dependency: str) -> int | None:
         try:
             topic = self.topics[topic]
         except KeyError:
-            return False
+            return None
         if dependency in topic.dependencies:
-            return True
+            return 1
         for test_dependency in topic.dependencies:
-            if self.is_topic_dependent_on(test_dependency, dependency):
-                return True
-        return False
+            test_result = self.get_topic_dependency_depth(topic.name, test_dependency)
+            if test_result:
+                return 1 + test_result
+        return None
+
+    def get_topics_taught_depth(self, event: Event) -> int:
+        """
+        Calculates the maximum dependency depth of topics taught in this event on other topics taught in this event.
+        :return: The number of layers of dependency within the topics taught in this event. Will be at least one
+                 as long as there are topics taught in the event.
+        """
+        depth: int = 0
+        for topic in event.topics_taught:
+            if depth == 0:
+                depth = 1
+            for test in event.topics_taught:
+                if test == topic:
+                    continue
+                test_result = self.get_topic_dependency_depth(topic, test)
+                if test_result:
+                    if test_result > depth:
+                        depth = test_result
+        return depth
 
     def finalize(self):
         """
@@ -276,7 +298,6 @@ def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
         verify_topics(topics_needed, event, 'required', info)
         event_obj = Event(current_unit, event, topics_taught, topics_needed)
         info.events.append(event_obj)
-        event_obj.previous = last_event
         if last_event is not None:
             last_event.next = event_obj
         last_event = event_obj
