@@ -142,7 +142,7 @@ class DependencyInfo:
         if dependency in topic.dependencies:
             return 1
         for test_dependency in topic.dependencies:
-            test_result = self.get_topic_dependency_depth(topic.name, test_dependency)
+            test_result = self.get_topic_dependency_depth(test_dependency, dependency)
             if test_result:
                 return 1 + test_result
         return None
