@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pathlib import Path
 
 from util import DependencyInfo, Event, qualify, Side
@@ -107,7 +105,7 @@ class EventChartBuilder(BaseChartBuilder):
         self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
 
-    def __draw_sided_topic(self, topic: str, event: Event, side: Side) -> str:
+    def __draw_sided_topic(self, topic: str, event: Event, side: Side, attrs) -> str:
         """
         Draws a topic under the specified graph of an event.
         :param topic: The name of the topic to draw.
@@ -126,12 +124,12 @@ class EventChartBuilder(BaseChartBuilder):
             else:
                 taught = temp
         self.__event_graphs[event] = (required, taught)
-        temp.node(qualified_name, topic)
+        temp.node(qualified_name, topic, attrs)
         self._nodes_drawn.append(qualified_name)
         return qualified_name
 
     def _draw_topic_only(self, topic: str, event: Event,
-                         default_side: Side = None, force_draw: bool = False) -> str:
+                         default_side: Side = None, force_draw: bool = False, **attrs) -> str:
         """
         Draws a topic under an event.
         :param topic: The topic to draw.
@@ -166,18 +164,18 @@ class EventChartBuilder(BaseChartBuilder):
                 self.__event_graphs[event] = (None, None)
             if topic in event.topics_taught and topic in event.topics_required:
                 if default_side == 'taught':
-                    self.__draw_sided_topic(topic, event, 'taught')
+                    self.__draw_sided_topic(topic, event, 'taught', attrs)
                 elif default_side == 'required':
-                    self.__draw_sided_topic(topic, event, 'required')
+                    self.__draw_sided_topic(topic, event, 'required', attrs)
                 else:
                     raise ValueError('If a topic is both taught and required by an event, '
                                      'a default side must be specified')
             elif topic in event.topics_taught:
-                self.__draw_sided_topic(topic, event, 'taught')
+                self.__draw_sided_topic(topic, event, 'taught', attrs)
             elif topic in event.topics_required:
-                self.__draw_sided_topic(topic, event, 'required')
+                self.__draw_sided_topic(topic, event, 'required', attrs)
             else:
-                self.__draw_sided_topic(topic, event, default_side)
+                self.__draw_sided_topic(topic, event, default_side, attrs)
         return qualified_name
 
     def _draw_topic_helper(self, topic: str, event: Event) -> tuple[str, str, Event]:
@@ -344,11 +342,21 @@ class FullChartBuilder(EventChartBuilder):
         self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
         """Stores the parent graph for sub-graphs for each event id"""
         self._latest_required_times: dict[str, tuple[Event, str]] = {}
-        """Stores the last event in which a topic was required."""
+        """Stores the last event in which a topic was required, and the qualified name of the node."""
+        self._rank_nodes: dict[int, str] = {}
+        """Stores the qualified name of the rank node for each rank"""
         self._last_rank_node: str | None = None
+        """Tracks the qualified name of the last rank node drawn"""
         self._last_rank: int = 0
+        """Tracks the number of the last rank node drawn"""
 
-    def __get_tail_event(self, topic: str, event: Event) -> str | None:
+    def __get_tail_node(self, topic: str, event: Event) -> str | None:
+        """
+        Decides which node should be the tail.
+        :param topic: The topic of the head node.
+        :param event: The event of the head node.
+        :return: The node where topic was most recently taught or required.
+        """
         last_taught_time = self._info.get_most_recent_taught_time(event, topic)
         if topic not in self._latest_required_times and last_taught_time is None:
             return None
@@ -362,37 +370,49 @@ class FullChartBuilder(EventChartBuilder):
         else:
             return self._latest_required_times[topic][1]
 
-    def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side) -> str:
+    def __draw_rank_edge(self, node: str, topic: str, event: Event, base_rank: int, adjust_depth: bool):
+        rank: int = base_rank
+        if adjust_depth:
+            rank += self._info.get_topic_taught_depth(topic, event)
+        if rank > 0:
+            self._draw_edge(self._rank_nodes[rank], node, style='invis')
+
+    def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> str:
         head = self._draw_topic_only(topic, event, default_side)
-        tail = self.__get_tail_event(topic, event)
+        self.__draw_rank_edge(head, topic, event, base_rank, default_side == 'taught')
+        tail = self.__get_tail_node(topic, event)
         if tail is not None:
-            self._draw_edge(tail, head)
+            self._draw_edge(tail, head, constraint='False')
         if default_side == 'taught':
             for dependency in self._info.topics[topic].dependencies:
                 last_dependency_taught_time = self._info.get_most_recent_taught_time(event, dependency, True)
                 if last_dependency_taught_time is not None:
-                    self._draw_edge(qualify(dependency, last_dependency_taught_time, 'taught'), head)
+                    self._draw_edge(qualify(dependency, last_dependency_taught_time, 'taught'), head,
+                                    constraint='False')
         return head
 
     def __make_rank_node(self, event: Event, side: Side):
+        """Creates another rank node after the last drawn rank node."""
         self._last_rank += 1
-        name = self._draw_topic_only(f'rank_node_{self._last_rank}', event, side, True)
+        name = self._draw_topic_only(f'rank_node_{self._last_rank}', event, side, True, shape='point', style='invis')
+        self._rank_nodes[self._last_rank] = name
         if self._last_rank_node:
-            self._draw_edge(self._last_rank_node, name)
+            self._draw_edge(self._last_rank_node, name, style='invis')
         self._last_rank_node = name
 
     def draw_full(self):
         for event in self._info.events:
+            base_rank: int = self._last_rank
             if event.topics_required:
                 self.__make_rank_node(event, 'required')
+            for topic in event.topics_required:
+                name = self.__draw_sided_topic_and_dependencies(topic, event, 'required', base_rank)
+                self._latest_required_times[topic] = event, name
             if event.topics_taught:
                 for i in range(self._info.get_topics_taught_depth(event)):
                     self.__make_rank_node(event, 'taught')
-            for topic in event.topics_required:
-                name = self.__draw_sided_topic_and_dependencies(topic, event, 'required')
-                self._latest_required_times[topic] = event, name
             for topic in event.topics_taught:
-                self.__draw_sided_topic_and_dependencies(topic, event, 'taught')
+                self.__draw_sided_topic_and_dependencies(topic, event, 'taught', base_rank)
 
     def _finish_event(self, event: Event, parent_graph: Digraph):
         if event.unit_number not in self._event_id_graphs:
@@ -400,6 +420,10 @@ class FullChartBuilder(EventChartBuilder):
         if event.event_id not in self._event_id_graphs[event.unit_number]:
             temp = Digraph(f'Unit {event.unit_number}{f"${event.event_id}" if event.event_id else ""}')
             temp.attr(cluster='True', margin='32', penwidth='3')
+            if event.event_id:
+                temp.attr(label=event.event_id)
+            else:
+                temp.attr(label=f'Unit {event.unit_number}')
             self._event_id_graphs[event.unit_number][event.event_id] = temp
         return super()._finish_event(event, self._event_id_graphs[event.unit_number][event.event_id])
 
