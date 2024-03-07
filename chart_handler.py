@@ -1,8 +1,10 @@
 from util.chart_context import ChartContext
 from util.event import Event
 
-from chart_builders.chart_builder import TopicChartBuilder, TopicByEventChartBuilder, EventChartBuilder, \
-    FullChartBuilder
+from chart_builders.topic_by_event import TopicByEventChartBuilder
+from chart_builders.topic import TopicChartBuilder
+from chart_builders.event import EventChartBuilder
+from chart_builders.full import FullChartBuilder
 
 
 def topic_chart(context: ChartContext):
