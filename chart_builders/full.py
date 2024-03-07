@@ -47,7 +47,7 @@ class FullChartBuilder(EventChartBuilder):
         self._node_ranks[node] = rank
         if rank > 0:
             self.__ensure_rank_exists(rank - 1)
-            self._draw_edge(self._rank_nodes[rank - 1], node, style='invis')
+            self._draw_edge(self._rank_nodes[rank - 1], node, style='' if self._context.verbose_graph else 'invis')
         return rank
 
     def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
@@ -66,18 +66,24 @@ class FullChartBuilder(EventChartBuilder):
                                     constraint='False')
         return head, rank
 
+    def __draw_rank_node(self) -> str:
+        return self._draw_node(f'rank_node_{self._last_rank}',
+                               shape='ellipse' if self._context.verbose_graph else 'point',
+                               style='' if self._context.verbose_graph else 'invis')
+
     def __ensure_rank_exists(self, rank: int):
         """Ensures there are sufficient rank nodes to use the specified rank."""
         if self._last_rank is None:
             self._last_rank = 0
-            name = self._draw_node(f'rank_node_{self._last_rank}', shape='point', style='invis')
+            name = self.__draw_rank_node()
             self._rank_nodes[self._last_rank] = name
         while self._last_rank < rank:
             self._last_rank += 1
-            name = self._draw_node(f'rank_node_{self._last_rank}', shape='point', style='invis')
+            name = self.__draw_rank_node()
             self._rank_nodes[self._last_rank] = name
             if self._last_rank > 0:
-                self._draw_edge(self._rank_nodes[self._last_rank - 1], name, style='invis')
+                self._draw_edge(self._rank_nodes[self._last_rank - 1], name,
+                                style='' if self._context.verbose_graph else 'invis')
 
     def __draw_unit(self, unit: int, start_rank: int) -> int:
         for event_id in self._context.info.grouped_events[unit]:
