@@ -1,17 +1,19 @@
-from pathlib import Path
-
-from util import DependencyInfo, Event, qualify, Side
+from util import Event, qualify, Side
 
 from graphviz import Digraph
+
+from util.chart_context import ChartContext
+from util.dependency_info import DependencyInfo
 
 
 class BaseChartBuilder:
     """The base class for chart builders."""
 
-    def __init__(self, info: DependencyInfo, file_out: Path):
-        self._info: DependencyInfo = info
+    def __init__(self, context: ChartContext, chart_name: str):
+        self._context = context
+        self._info: DependencyInfo = context.info
         """The DependencyInfo used for building the chart."""
-        self._graph: Digraph = Digraph(str(file_out))
+        self._graph: Digraph = Digraph(str(context.get_chart_path(chart_name)))
         """The main graph object for the chart."""
         self.__nodes_drawn: list[str] = []
         """Tracks all the nodes drawn to prevent duplicate nodes."""
@@ -52,8 +54,8 @@ class BaseChartBuilder:
 class TopicChartBuilder(BaseChartBuilder):
     """Draws charts using only topics."""
 
-    def __init__(self, info: DependencyInfo, file_out: Path):
-        super().__init__(info, file_out)
+    def __init__(self, context: ChartContext):
+        super().__init__(context, 'topics')
 
     def draw_topic_and_dependencies(self, topic: str):
         """
@@ -67,8 +69,8 @@ class TopicChartBuilder(BaseChartBuilder):
 class TopicByEventChartBuilder(BaseChartBuilder):
     """Draws charts focusing on topics, but grouping topics by event."""
 
-    def __init__(self, info: DependencyInfo, file_out: Path):
-        super().__init__(info, file_out)
+    def __init__(self, context: ChartContext):
+        super().__init__(context, 'topics_by_event')
         self._event_graphs: dict[Event, Digraph] = {}
         """Stores the sub-graphs for each event."""
 
@@ -100,8 +102,8 @@ class TopicByEventChartBuilder(BaseChartBuilder):
 class EventChartBuilder(BaseChartBuilder):
     """Draws charts that focus on a single event, drawing all things related to that event."""
 
-    def __init__(self, info: DependencyInfo, file_out: Path):
-        super().__init__(info, file_out)
+    def __init__(self, context: ChartContext, event: Event = None, chart_name: str = None):
+        super().__init__(context, f'{event.unit}_{event.name}' if event else chart_name)
         self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
 
@@ -333,8 +335,8 @@ class EventChartBuilder(BaseChartBuilder):
 
 
 class FullChartBuilder(EventChartBuilder):
-    def __init__(self, info: DependencyInfo, file_out: Path):
-        super().__init__(info, file_out)
+    def __init__(self, context: ChartContext):
+        super().__init__(context, chart_name='full')
         self._graph.attr(splines='ortho', ranksep='1')
         self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
         """Stores the parent graph for sub-graphs for each event id"""

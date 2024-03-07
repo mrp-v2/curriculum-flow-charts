@@ -2,18 +2,21 @@ from pathlib import Path
 
 from argparse import ArgumentParser, FileType, Namespace
 
-from util import Event, read_info
+from util import Event
 
-from charts import topic_chart, topic_by_event_chart, event_chart, full_chart
+from chart_handler import topic_chart, topic_by_event_chart, event_chart, full_chart
+from util.chart_context import ChartContext
+from util.parse_dependency_info import read_info
 
 
 def main(args: Namespace):
     info = read_info(args.topics_file, args.events_file)
     output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
+    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [])
     if args.topics:
-        topic_chart(info, output_dir / f'{args.output_prefix}topics')
+        topic_chart(context)
     if args.topics_by_event:
-        topic_by_event_chart(info, output_dir / f'{args.output_prefix}topics_by_event')
+        topic_by_event_chart(context)
     if args.event:
         unit, name = args.event.split('$')
         event: Event | None = None
@@ -24,9 +27,9 @@ def main(args: Namespace):
         if event is None:
             print(f'Unrecognized event: {args.event}')
         else:
-            event_chart(info, output_dir / f'{args.output_prefix}{unit}_{name}', event)
+            event_chart(context, event)
     if args.full:
-        full_chart(info, output_dir / f'{args.output_prefix}full')
+        full_chart(context)
 
 
 if __name__ == '__main__':
@@ -55,6 +58,8 @@ if __name__ == '__main__':
     parser.add_argument('-output_dir', help='''Specifies a directory to save output files to.
     Defaults to the current working directory.''')
     parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
+    parser.add_argument('-verbose_graph', dest='flags', action='append_const', const='verbose_graph',
+                        help='''Activates drawing debug information in graphs that support it.''')
     descriptive_options = parser.add_argument_group('charts options', 'one of the following charts:')
     options = descriptive_options.add_mutually_exclusive_group(required=True)
     options.add_argument('-topics', action='store_true',
