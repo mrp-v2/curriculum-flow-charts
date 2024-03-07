@@ -335,7 +335,7 @@ class EventChartBuilder(BaseChartBuilder):
 class FullChartBuilder(EventChartBuilder):
     def __init__(self, info: DependencyInfo, file_out: Path):
         super().__init__(info, file_out)
-        self._graph.attr(splines='ortho')
+        self._graph.attr(splines='ortho', ranksep='1')
         self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
         """Stores the parent graph for sub-graphs for each event id"""
         self._latest_required_times: dict[str, tuple[Event, str]] = {}
@@ -344,6 +344,8 @@ class FullChartBuilder(EventChartBuilder):
         """Stores the qualified name of the rank node for each rank"""
         self._last_rank: int | None = None
         """Tracks the number of the last rank node drawn"""
+        self._node_ranks: dict[str, int] = {}
+        """Tracks the rank of each node"""
 
     def __get_tail_node(self, topic: str, event: Event) -> str | None:
         """
@@ -369,9 +371,10 @@ class FullChartBuilder(EventChartBuilder):
         rank: int = base_rank
         if adjust_depth:
             rank += self._info.get_topic_taught_depth(topic, event)
+        self._node_ranks[node] = rank
         if rank > 0:
-            self.__ensure_rank_exists(rank)
-            self._draw_edge(self._rank_nodes[rank], node, style='invis')
+            self.__ensure_rank_exists(rank - 1)
+            self._draw_edge(self._rank_nodes[rank - 1], node, style='invis')
         return rank
 
     def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
@@ -380,7 +383,8 @@ class FullChartBuilder(EventChartBuilder):
         rank = self.__draw_rank_edge(head, topic, event, base_rank, default_side == 'taught')
         tail = self.__get_tail_node(topic, event)
         if tail is not None:
-            self._draw_edge(tail, head, constraint='False')
+            rank_dif = rank - self._node_ranks[tail]
+            self._draw_edge(tail, head, constraint='False', weight=f'{2 if abs(rank_dif) <= 1 else 1}')
         if default_side == 'taught':
             for dependency in self._info.topics[topic].dependencies:
                 last_dependency_taught_time = self._info.get_most_recent_taught_time(event, dependency, True)
@@ -390,7 +394,7 @@ class FullChartBuilder(EventChartBuilder):
         return head, rank
 
     def __ensure_rank_exists(self, rank: int):
-        """Creates another rank node after the last drawn rank node."""
+        """Ensures there are sufficient rank nodes to use the specified rank."""
         if self._last_rank is None:
             self._last_rank = 0
             name = self._draw_node(f'rank_node_{self._last_rank}', shape='point', style='invis')
