@@ -1,7 +1,6 @@
 from graphviz import Digraph
 
 from util.chart_context import ChartContext
-from util.dependency_info import DependencyInfo
 
 
 class BaseChartBuilder:
@@ -9,8 +8,7 @@ class BaseChartBuilder:
 
     def __init__(self, context: ChartContext, chart_name: str):
         self._context = context
-        self._info: DependencyInfo = context.info
-        """The DependencyInfo used for building the chart."""
+        """The ChartContext for this chart builder."""
         self._graph: Digraph = Digraph(str(context.get_chart_path(chart_name)))
         """The main graph object for the chart."""
         self.__nodes_drawn: list[str] = []

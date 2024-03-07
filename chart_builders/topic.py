@@ -13,5 +13,5 @@ class TopicChartBuilder(BaseChartBuilder):
         Draws a topic, and edges connecting it to its dependencies.
         """
         self._draw_node(topic, topic)
-        for dependency in self._info.topics[topic].dependencies:
+        for dependency in self._context.info.topics[topic].dependencies:
             self._draw_edge(dependency, topic)

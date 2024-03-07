@@ -27,7 +27,7 @@ class FullChartBuilder(EventChartBuilder):
         :param event: The event of the head node.
         :return: The node where topic was most recently taught or required.
         """
-        last_taught_time = self._info.get_most_recent_taught_time(event, topic)
+        last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
         if topic not in self._latest_required_times and last_taught_time is None:
             return None
         if topic not in self._latest_required_times:
@@ -43,7 +43,7 @@ class FullChartBuilder(EventChartBuilder):
     def __draw_rank_edge(self, node: str, topic: str, event: Event, base_rank: int, adjust_depth: bool) -> int:
         rank: int = base_rank
         if adjust_depth:
-            rank += self._info.get_topic_taught_depth(topic, event)
+            rank += self._context.info.get_topic_taught_depth(topic, event)
         self._node_ranks[node] = rank
         if rank > 0:
             self.__ensure_rank_exists(rank - 1)
@@ -59,8 +59,8 @@ class FullChartBuilder(EventChartBuilder):
             rank_dif = rank - self._node_ranks[tail]
             self._draw_edge(tail, head, constraint='False', weight=f'{2 if abs(rank_dif) <= 1 else 1}')
         if default_side == 'taught':
-            for dependency in self._info.topics[topic].dependencies:
-                last_dependency_taught_time = self._info.get_most_recent_taught_time(event, dependency, True)
+            for dependency in self._context.info.topics[topic].dependencies:
+                last_dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
                 if last_dependency_taught_time is not None:
                     self._draw_edge(qualify(dependency, last_dependency_taught_time, 'taught'), head,
                                     constraint='False')
@@ -80,13 +80,13 @@ class FullChartBuilder(EventChartBuilder):
                 self._draw_edge(self._rank_nodes[self._last_rank - 1], name, style='invis')
 
     def __draw_unit(self, unit: int, start_rank: int) -> int:
-        for event_id in self._info.grouped_events[unit]:
+        for event_id in self._context.info.grouped_events[unit]:
             start_rank = self.__draw_id(event_id, start_rank, unit)
         return start_rank
 
     def __draw_id(self, event_id, last_id_rank, unit) -> int:
         max_rank: int | None = None
-        for event in self._info.grouped_events[unit][event_id].values():
+        for event in self._context.info.grouped_events[unit][event_id].values():
             for topic in event.topics_required:
                 name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'required', last_id_rank)
                 if max_rank is None or rank > max_rank:
@@ -102,7 +102,7 @@ class FullChartBuilder(EventChartBuilder):
 
     def draw_full(self):
         start_rank: int = 0
-        for unit in self._info.grouped_events:
+        for unit in self._context.info.grouped_events:
             start_rank = self.__draw_unit(unit, start_rank)
 
     def _finish_event(self, event: Event, parent_graph: Digraph):

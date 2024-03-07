@@ -96,7 +96,7 @@ class EventChartBuilder(BaseChartBuilder):
                  and the first event where the topic was taught
         """
         name = self._draw_topic_only(topic, event, 'taught')
-        previous_taught_time = self._info.get_most_recent_taught_time(event, topic)
+        previous_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
         if previous_taught_time is not None and previous_taught_time != event:
             recent_qualified_name, first_name, first_event = self._draw_topic_helper(topic, previous_taught_time)
             self._draw_edge(recent_qualified_name, name)
@@ -120,7 +120,7 @@ class EventChartBuilder(BaseChartBuilder):
         :param topic: The topic to draw the dependencies of.
         :param parent_event: The event to use as both the default event and parent event when calling add_topic.
         """
-        for dependency in self._info.topics[topic].dependencies:
+        for dependency in self._context.info.topics[topic].dependencies:
             self.__draw_sided_topic_and_dependencies_depth(dependency, parent_event, dependency is not topic,
                                                            qualify(topic, parent_event, 'taught'))
 
@@ -138,7 +138,7 @@ class EventChartBuilder(BaseChartBuilder):
                             starting at search_start.
         """
         if parent_node:
-            topic_event = self._info.get_most_recent_taught_time(default_event, topic, include_start)
+            topic_event = self._context.info.get_most_recent_taught_time(default_event, topic, include_start)
         else:
             topic_event = default_event
         if topic_event is None:
@@ -160,15 +160,15 @@ class EventChartBuilder(BaseChartBuilder):
         for topic in event.topics_taught:
             if topic in topics_of_interest:
                 name = self._draw_topic_only(topic, event, 'taught')
-                last_taught_time = self._info.get_most_recent_taught_time(event, topic)
+                last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
                 tail_name = qualify(topic, last_taught_time, 'taught')
                 self._draw_edge(tail_name, name)
                 topics_of_interest[topic] = name
             to_add: list[tuple[str, str]] = []
             for topic_of_interest in topics_of_interest:
-                if topic_of_interest in self._info.topics[topic].dependencies:
+                if topic_of_interest in self._context.info.topics[topic].dependencies:
                     name = self._draw_topic_only(topic, event, 'taught')
-                    last_taught_time = self._info.get_most_recent_taught_time(event, topic_of_interest, True)
+                    last_taught_time = self._context.info.get_most_recent_taught_time(event, topic_of_interest, True)
                     tail_name = qualify(topic_of_interest, last_taught_time, 'taught')
                     self._draw_edge(tail_name, name)
                     to_add.append((topic, name))
