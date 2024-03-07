@@ -111,17 +111,22 @@ class FullChartBuilder(EventChartBuilder):
         for unit in self._context.info.grouped_events:
             start_rank = self.__draw_unit(unit, start_rank)
 
-    def _finish_event(self, event: Event, parent_graph: Digraph):
+    def _finish_event(self, event: Event, parent_graph: Digraph, margin: int = 8):
         if event.unit_number not in self._event_id_graphs:
             self._event_id_graphs[event.unit_number] = {}
         if event.event_id not in self._event_id_graphs[event.unit_number]:
             temp = Digraph(f'Unit {event.unit_number}{f"${event.event_id}" if event.event_id else ""}')
             temp.attr(cluster='True', margin='32', penwidth='3', newrank='True')
             if event.event_id:
-                temp.attr(label=event.event_id)
+                temp.attr(label=event.event_id, style='dashed')
             else:
-                temp.attr(label=f'Unit {event.unit_number}')
+                temp.attr(label=f'Unit {event.unit_number}', style='rounded')
             self._event_id_graphs[event.unit_number][event.event_id] = temp
+        r_graph, t_graph = self._event_graphs[event]
+        if r_graph is not None:
+            r_graph.attr(margin='32', style='dotted')
+        if t_graph is not None:
+            t_graph.attr(margin='32', style='dotted')
         return super()._finish_event(event, self._event_id_graphs[event.unit_number][event.event_id])
 
     def finish(self):

@@ -10,7 +10,7 @@ class EventChartBuilder(BaseChartBuilder):
 
     def __init__(self, context: ChartContext, event: Event = None, chart_name: str = None):
         super().__init__(context, f'{event.unit}_{event.name}' if event else chart_name)
-        self.__event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
+        self._event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
 
     def __draw_sided_topic(self, topic: str, event: Event, side: Side, attrs) -> str:
@@ -22,7 +22,7 @@ class EventChartBuilder(BaseChartBuilder):
         :return: The qualified name of the topic.
         """
         qualified_name = qualify(topic, event, side)
-        required, taught = self.__event_graphs[event]
+        required, taught = self._event_graphs[event]
         temp = (required if side == 'required' else taught)
         if temp is None:
             temp = Digraph(f'{event.name}${side}')
@@ -31,7 +31,7 @@ class EventChartBuilder(BaseChartBuilder):
                 required = temp
             else:
                 taught = temp
-        self.__event_graphs[event] = (required, taught)
+        self._event_graphs[event] = (required, taught)
         self._draw_node(qualified_name, topic, temp, attrs)
         return qualified_name
 
@@ -66,8 +66,8 @@ class EventChartBuilder(BaseChartBuilder):
             if default_side is None:
                 raise ValueError('If force_draw is True, then default_side must be specified')
             qualified_name = qualify(topic, event, default_side)
-        if event not in self.__event_graphs:
-            self.__event_graphs[event] = (None, None)
+        if event not in self._event_graphs:
+            self._event_graphs[event] = (None, None)
         if topic in event.topics_taught and topic in event.topics_required:
             if default_side == 'taught':
                 self.__draw_sided_topic(topic, event, 'taught', attrs)
@@ -213,7 +213,7 @@ class EventChartBuilder(BaseChartBuilder):
                 print(f'ERROR: event {event} has no topics taught or required')
 
     def _finish_event(self, event: Event, parent_graph: Digraph):
-        required_graph, taught_graph = self.__event_graphs[event]
+        required_graph, taught_graph = self._event_graphs[event]
         if required_graph is not None and taught_graph is not None:
             required_graph.attr(label='Required')
             taught_graph.attr(label='Taught')
@@ -235,6 +235,6 @@ class EventChartBuilder(BaseChartBuilder):
         """
         Finalizes the graph and returns it.
         """
-        for event in self.__event_graphs:
+        for event in self._event_graphs:
             self._finish_event(event, self._graph)
         return self._graph
