@@ -5,3 +5,5 @@ ideas:
 
 command-line:
 -make event arg allow just event name, as long as there is only one event with that name
+
+-new chart type that focuses on a specific topic

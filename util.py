@@ -6,7 +6,7 @@ EventType = Literal['lecture', 'lab', 'homework', 'project']
 Side = Literal['taught', 'required']
 
 
-def decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
+def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
     short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
     lecture = False
     lab = False
@@ -76,7 +76,7 @@ class Event:
         self.topics_taught: set[str] = topics_taught
         self.topics_required: set[str] = topics_required
         self.next: Event | None = None
-        event_type, unit_number, event_id = decide_event_type_and_number(self.name)
+        event_type, unit_number, event_id = _decide_event_type_and_number(self.name)
         self.event_type: EventType = event_type
         self.unit_number: int = unit_number
         self.event_id: str | None = event_id
@@ -125,8 +125,11 @@ class DependencyInfo:
 
     def __init__(self):
         self.events: list[Event] = []
-        # Stores Topics by their name
+        """A list of all events in chronological order"""
+        self.grouped_events: dict[int, dict[str, dict[EventType, Event]]] = {}
+        """Allows access to an event by unit, id, and type"""
         self.topics: dict[str, Topic] = {}
+        """Maps topic names to their Topic object"""
 
     def is_topic_dependent_on(self, topic: str, dependency: str) -> bool:
         """
@@ -197,11 +200,11 @@ class DependencyInfo:
                 units_with_projects.add(event.unit_number)
         # Simplify topic dependencies
         for topic in self.topics.values():
-            simplify(self, topic.dependencies, topic.__str__())
+            _simplify(self, topic.dependencies, topic.__str__())
         # simplify event topics and ensure all topics are referenced in an event
         unused_topics = [item for item in self.topics]
         for event in self.events:
-            simplify(self, event.topics_required, event.__str__())
+            _simplify(self, event.topics_required, event.__str__())
             for topic in event.topics_taught:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
@@ -221,18 +224,8 @@ class DependencyInfo:
             return None
         return self.events[index]
 
-    def get_next_required_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
-        index: int = self.events.index(start)
-        if not include_start:
-            index += 1
-        while index < len(self.events) and topic not in self.events[index].topics_required:
-            index += 1
-        if index == len(self.events):
-            return None
-        return self.events[index]
 
-
-def simplify(info: DependencyInfo, topics: set[str], title: str):
+def _simplify(info: DependencyInfo, topics: set[str], title: str):
     """
     Takes a list of topics, and removes topics that are dependencies of other topics in the list.
     Prints info about each topic removed in this way.
@@ -255,13 +248,13 @@ def qualify(topic: str, event: Event, modifier: Side = None) -> str:
     return f"{event.unit}${event.name}${'' if modifier is None else f'{modifier}$'}{topic}"
 
 
-def verify_topics(topics: set[str], event: str, prefix: str, info: DependencyInfo):
+def __verify_topics(topics: set[str], event: str, prefix: str, info: DependencyInfo):
     for topic in topics:
         if topic not in info.topics:
             print(f'WARNING: {prefix} topic \'{topic}\' in \'{event}\' not in topics list')
 
 
-def parse_topics(topics_string: str, comment: str) -> set[str]:
+def __parse_topics(topics_string: str, comment: str) -> set[str]:
     topics = set()
     for topic in topics_string.split(';'):
         topic = topic.strip()
@@ -273,8 +266,17 @@ def parse_topics(topics_string: str, comment: str) -> set[str]:
     return topics
 
 
-def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
-    info = DependencyInfo()
+def __verify_events(info: DependencyInfo):
+    list_index: int = 0
+    for unit in info.grouped_events:
+        for event_id in info.grouped_events[unit]:
+            for event_type in info.grouped_events[unit][event_id]:
+                if info.grouped_events[unit][event_id][event_type] != info.events[list_index]:
+                    raise ValueError('Events are not given in the same order as their unit, id, and type indicate!')
+                list_index += 1
+
+
+def __read_topics(info: DependencyInfo, topics_file: IOBase):
     topics_reader = csv.reader(topics_file, delimiter='\t')
     first_row: bool = True
     for row in topics_reader:
@@ -282,39 +284,70 @@ def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
             first_row = False
             continue
         topic = row[0].strip()
-        dependencies = parse_topics(row[1], f'dependency of \'{topic}\'')
+        dependencies = __parse_topics(row[1], f'dependency of \'{topic}\'')
         info.topics[topic] = Topic(topic, dependencies, row[2].strip())
     for topic in info.topics:
         for dependency in info.topics[topic].dependencies:
             if dependency not in info.topics:
                 print(f'DATA-WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
+
+
+def __read_event(info: DependencyInfo, line: list[str], unit: str | None, topic_taught_events: dict[str, str]) -> Event:
+    if line[0]:
+        unit = line[0]
+    event_name = line[1]
+    topics_taught = __parse_topics(line[2], f'taught in \'{event_name}\'')
+    for topic in topics_taught:
+        if topic in topic_taught_events:
+            print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event_name}\','
+                  f' but it is already taught in \'{topic_taught_events[topic]}\'')
+            topic_taught_events[topic] = event_name
+        else:
+            topic_taught_events[topic] = event_name
+    __verify_topics(topics_taught, event_name, 'taught', info)
+    topics_needed = __parse_topics(line[3], f'required in \'{event_name}\'')
+    __verify_topics(topics_needed, event_name, 'required', info)
+    event_obj = Event(unit, event_name, topics_taught, topics_needed)
+    return event_obj
+
+
+def __add_event(info: DependencyInfo, event: Event) -> bool:
+    if not event.topics_taught and not event.topics_required:
+        print(f'DATA-ERROR: Ignoring event {event} because no topics are taught or required by it')
+        return False
+    info.events.append(event)
+    if event.unit_number not in info.grouped_events:
+        info.grouped_events[event.unit_number] = {}
+    if event.event_id not in info.grouped_events[event.unit_number]:
+        info.grouped_events[event.unit_number][event.event_id] = {}
+    info.grouped_events[event.unit_number][event.event_id][event.event_type] = event
+    return True
+
+
+def __read_events(info: DependencyInfo, events_file: IOBase):
     topic_taught_events: dict[str, str] = {}
     events_reader = csv.reader(events_file, delimiter='\t')
     first_row: bool = True
-    current_unit: str | None = None
+    last_unit: str | None = None
     last_event: Event | None = None
+
     for row in events_reader:
         if first_row:
             first_row = False
             continue
-        if row[0]:
-            current_unit = row[0]
-        event = row[1]
-        topics_taught = parse_topics(row[2], f'taught in \'{event}\'')
-        for topic in topics_taught:
-            if topic in topic_taught_events:
-                print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event}\','
-                      f' but it is already taught in \'{topic_taught_events[topic]}\'')
-                topic_taught_events[topic] = event
-            else:
-                topic_taught_events[topic] = event
-        verify_topics(topics_taught, event, 'taught', info)
-        topics_needed = parse_topics(row[3], f'required in \'{event}\'')
-        verify_topics(topics_needed, event, 'required', info)
-        event_obj = Event(current_unit, event, topics_taught, topics_needed)
-        info.events.append(event_obj)
-        if last_event is not None:
-            last_event.next = event_obj
-        last_event = event_obj
+        event = __read_event(info, row, last_unit, topic_taught_events)
+        if __add_event(info, event):
+            if last_event is not None:
+                last_event.next = event
+            last_unit = event.unit
+            last_event = event
+
+    __verify_events(info)
+
+
+def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
+    info = DependencyInfo()
+    __read_topics(info, topics_file)
+    __read_events(info, events_file)
     info.finalize()
     return info
