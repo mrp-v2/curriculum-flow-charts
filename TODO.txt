@@ -5,3 +5,9 @@ ideas:
 
 command-line:
 -new chart type that focuses on a specific topic
+
+
+TODO
+
+-no borders for group id, don't show label for group id either
+-fix border inconsistency on events
