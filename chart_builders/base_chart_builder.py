@@ -11,8 +11,6 @@ class BaseChartBuilder:
         """The ChartContext for this chart builder."""
         self._graph: Digraph = Digraph(str(context.get_chart_path(chart_name)))
         """The main graph object for the chart."""
-        self._graph.node_attr['shape'] = 'box'
-        self._graph.node_attr['style'] = 'rounded'
         self.__nodes_drawn: list[str] = []
         """Tracks all the nodes drawn to prevent duplicate nodes."""
         self.__edges_drawn: list[tuple[str, str]] = []
