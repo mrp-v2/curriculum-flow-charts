@@ -2,9 +2,8 @@ from pathlib import Path
 
 from argparse import ArgumentParser, FileType, Namespace
 
-from util import Event
-
 from chart_handler import topic_chart, topic_by_event_chart, event_chart, full_chart
+from util import Event
 from util.chart_context import ChartContext
 from util.parse_dependency_info import read_info
 
@@ -18,16 +17,23 @@ def main(args: Namespace):
     if args.topics_by_event:
         topic_by_event_chart(context)
     if args.event:
-        unit, name = args.event.split('$')
-        event: Event | None = None
-        for test in info.events:
-            if test.unit == unit and test.name == name:
-                event = test
-                break
-        if event is None:
-            print(f'Unrecognized event: {args.event}')
+        unit: str | None
+        name: str
+        if '$' in args.event:
+            unit, name = args.event.split('$')
         else:
-            event_chart(context, event)
+            unit = None
+            name = args.event
+        matches: list[Event]
+        if unit:
+            matches = [event for event in info.events if
+                       name.lower() in event.name.lower() and unit.lower() in event.unit.lower()]
+        else:
+            matches = [event for event in info.events if name.lower() in event.name.lower()]
+        if len(matches) != 1:
+            print(f'Found {len(matches)} matches for event query \'{args.event}\'. Try again with a different query')
+        else:
+            event_chart(context, matches[0])
     if args.full:
         full_chart(context)
 
@@ -68,7 +74,9 @@ if __name__ == '__main__':
                          help='''Creates a chart showing what topics each event teaches,
     and what topics build off of each topic.''')
     options.add_argument('-event', help='''Creates a chart showing the specified event,
-    its topics taught and required, as well as all other events and topics that relate to that event.''')
+    its topics taught and required, as well as all other events and topics that relate to that event.
+    If there are events with the same name in different units,
+    the unit can be specified by separating the unit from the event with a $ symbol.''')
     options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
     main(parser.parse_args())
