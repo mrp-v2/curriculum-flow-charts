@@ -212,21 +212,21 @@ class EventChartBuilder(BaseChartBuilder):
             else:
                 print(f'ERROR: event {event} has no topics taught or required')
 
-    def _finish_event(self, event: Event, parent_graph: Digraph):
+    def _finish_event(self, event: Event, parent_graph: Digraph, **attr):
         required_graph, taught_graph = self._event_graphs[event]
         if required_graph is not None and taught_graph is not None:
-            required_graph.attr(label='Required')
-            taught_graph.attr(label='Taught')
+            required_graph.attr(label='Required', style='dotted', penwidth='1')
+            taught_graph.attr(label='Taught', style='dotted', penwidth='1')
             event_graph = Digraph(event.name)
-            event_graph.attr(cluster='True', label=event.name)
+            event_graph.attr(_attributes=attr, cluster='True', label=event.name)
             event_graph.subgraph(required_graph)
             event_graph.subgraph(taught_graph)
             parent_graph.subgraph(event_graph)
         elif required_graph is not None:
-            required_graph.attr(label=event.name)
+            required_graph.attr(_attributes=attr, label=event.name)
             parent_graph.subgraph(required_graph)
         elif taught_graph is not None:
-            taught_graph.attr(label=event.name)
+            taught_graph.attr(_attributes=attr, label=event.name)
             parent_graph.subgraph(taught_graph)
         else:
             raise RuntimeError('Event in event_graphs has no sub-graphs! This should never happen.')

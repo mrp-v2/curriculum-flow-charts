@@ -118,7 +118,7 @@ class FullChartBuilder(EventChartBuilder):
             temp = Digraph(f'Unit {event.unit_number}{f"${event.event_id}" if event.event_id else ""}')
             temp.attr(cluster='True', margin='32', penwidth='3', newrank='True')
             if event.event_id:
-                temp.attr(label=event.event_id, style='dashed')
+                temp.attr(label=event.event_id, style='invis')
             else:
                 temp.attr(label=f'Unit {event.unit_number}', style='rounded')
             self._event_id_graphs[event.unit_number][event.event_id] = temp
@@ -127,7 +127,8 @@ class FullChartBuilder(EventChartBuilder):
             r_graph.attr(margin='32', style='dotted')
         if t_graph is not None:
             t_graph.attr(margin='32', style='dotted')
-        return super()._finish_event(event, self._event_id_graphs[event.unit_number][event.event_id])
+        return super()._finish_event(event, self._event_id_graphs[event.unit_number][event.event_id], style='dashed',
+                                     penwidth='2')
 
     def finish(self):
         super().finish()

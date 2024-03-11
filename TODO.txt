@@ -1,8 +1,5 @@
-1. no borders for group id, don't show label for group id either
-2. fix border inconsistency on events
-
 Other charts:
-3. group by unit and group id in other charts too.
+1. group by unit and group id in other charts too.
 
 command-line:
-4. new chart type that focuses on a specific topic
+2. new chart type that focuses on a specific topic
