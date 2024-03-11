@@ -1,41 +1,61 @@
 from pathlib import Path
 
 from argparse import ArgumentParser, FileType, Namespace
+from typing import Literal
 
 from chart_handler import topic_chart, topic_by_event_chart, event_chart, full_chart
 from util import Event
 from util.chart_context import ChartContext
 from util.parse_dependency_info import read_info
 
+ChartType = Literal['topics', 'topics_by_event', 'event', 'full']
 
-def main(args: Namespace):
+
+def draw_chart(context: ChartContext, chart_type: ChartType, event: Event = None):
+    """
+    Draws the ChartType specified by chart_type and using the given ChartContext.
+    :param context: The ChartContext to use for drawing the chart.
+    :param chart_type: The ChartType to draw.
+    :param event: The event to use if chart_type is 'event'
+    """
+    if event is not None and chart_type != 'event':
+        raise ValueError('Cannot specify an event if chart_type is not \'event\'')
+    if event is None and chart_type == 'event':
+        raise ValueError('Cannot draw an \'event\' chart without an event specified')
+    match chart_type:
+        case 'topics':
+            topic_chart(context)
+        case 'topics_by_event':
+            topic_by_event_chart(context)
+        case 'event':
+            event_chart(context, event)
+        case 'full':
+            full_chart(context)
+
+
+def __main(args: Namespace):
+    """Handles the parsed command line arguments."""
     info = read_info(args.topics_file, args.events_file)
     output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
     context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [])
+    chart_type: ChartType | None = None
+    event: Event | None = None
     if args.topics:
-        topic_chart(context)
+        chart_type = 'topics'
     if args.topics_by_event:
-        topic_by_event_chart(context)
+        chart_type = 'topics_by_event'
     if args.event:
-        unit: str | None
-        name: str
-        if '$' in args.event:
-            unit, name = args.event.split('$')
-        else:
-            unit = None
-            name = args.event
+        chart_type = 'event'
         matches: list[Event]
-        if unit:
-            matches = [event for event in info.events if
-                       name.lower() in event.name.lower() and unit.lower() in event.unit.lower()]
-        else:
-            matches = [event for event in info.events if name.lower() in event.name.lower()]
+        matches = [event for event in info.events if args.event.lower() in event.name.lower()]
         if len(matches) != 1:
             print(f'Found {len(matches)} matches for event query \'{args.event}\'. Try again with a different query')
         else:
-            event_chart(context, matches[0])
+            event = matches[0]
     if args.full:
-        full_chart(context)
+        chart_type = 'full'
+    if chart_type:
+        draw_chart(context, chart_type, event)
 
 
 if __name__ == '__main__':
@@ -49,9 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('events_file', type=FileType(),
                         help='''The path to a tsv file containing event information.
     One event per row - the first row is assumed to be a header and is ignored.
-    Events are assumed to be in chronological order first to last top to bottom.
-    The first column specifies the unit number (e.g. 'Unit 3'). After a unit is specified, it is assumed
-    to be the same in all following events until another unit is specified.
+    The first column is ignored. It may contain extra information or be left empty.
     The second column specifies the name of the event. 
     The name should include an event type (lecture, lab, homework (hw), or project) and an event id starting with the 
     unit number, followed by a letter (e.g. '1a', '4c').
@@ -74,9 +92,7 @@ if __name__ == '__main__':
                          help='''Creates a chart showing what topics each event teaches,
     and what topics build off of each topic.''')
     options.add_argument('-event', help='''Creates a chart showing the specified event,
-    its topics taught and required, as well as all other events and topics that relate to that event.
-    If there are events with the same name in different units,
-    the unit can be specified by separating the unit from the event with a $ symbol.''')
+    its topics taught and required, as well as all other events and topics that relate to that event.''')
     options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
-    main(parser.parse_args())
+    __main(parser.parse_args())

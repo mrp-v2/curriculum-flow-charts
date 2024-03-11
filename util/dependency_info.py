@@ -4,7 +4,7 @@ from util.topic import Topic
 
 class DependencyInfo:
     """
-    Stores information about the course topics and events
+    Stores information about the course topics and events.
     """
 
     def __init__(self):
@@ -79,9 +79,9 @@ class DependencyInfo:
         units_with_projects: set[int] = set()
         for event in self.events:
             if event.event_type == 'project':
-                if event.unit_number in units_with_projects:
-                    raise ValueError(f"Unit {event.unit_number} has multiple projects!")
-                units_with_projects.add(event.unit_number)
+                if event.unit in units_with_projects:
+                    raise ValueError(f"Unit {event.unit} has multiple projects!")
+                units_with_projects.add(event.unit)
         # Simplify topic dependencies
         for topic in self.topics.values():
             _simplify(self, topic.dependencies, topic.__str__())
@@ -99,6 +99,13 @@ class DependencyInfo:
             print(f'DATA-WARNING: topic \'{topic}\' is not used in any event')
 
     def get_most_recent_taught_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
+        """
+        Finds the most recent time a topic was taught, before the starting event.
+        :param start: The event to search for the topic being taught before it.
+        :param topic: The topic to search for being taught.
+        :param include_start: If true, includes the starting event in the search.
+        :return: The event if one is found, otherwise None.
+        """
         index: int = self.events.index(start)
         if not include_start:
             index -= 1
@@ -113,6 +120,7 @@ def _simplify(info: DependencyInfo, topics: set[str], title: str):
     """
     Takes a list of topics, and removes topics that are dependencies of other topics in the list.
     Prints info about each topic removed in this way.
+    :param title: The title of the list, used when printing info messages about removals.
     """
     topics_to_remove: set[str] = set()
     for topic in topics:

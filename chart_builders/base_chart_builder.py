@@ -7,9 +7,13 @@ class BaseChartBuilder:
     """The base class for chart builders."""
 
     def __init__(self, context: ChartContext, chart_name: str):
+        """
+        :param context: The ChartContext to use for this builder.
+        :param chart_name: The name of this chart.
+        """
         self._context = context
         """The ChartContext for this chart builder."""
-        self._graph: Digraph = Digraph(str(context.get_chart_path(chart_name)))
+        self._graph: Digraph = Digraph(chart_name)
         """The main graph object for the chart."""
         self.__nodes_drawn: list[str] = []
         """Tracks all the nodes drawn to prevent duplicate nodes."""
@@ -17,6 +21,15 @@ class BaseChartBuilder:
         """Tracks all edges drawn to prevent duplicate edges."""
 
     def _draw_node(self, node: str, label: str = None, parent_graph: Digraph = None, _attributes=None, **attrs) -> str:
+        """
+        Draws a node inside parent_graph, after making sure the node hasn't already been drawn.
+        :param node: The qualified name of the node to draw.
+        :param label: The display name of the node. Defaults to the name of the node.
+        :param parent_graph: The graph to draw the node under. Defaults to the main graph.
+        :param _attributes: Any attributes to give the node.
+        :param attrs: More attributes to give the node.
+        :return: The qualified name of the node.
+        """
         if parent_graph is None:
             parent_graph = self._graph
         if node not in self.__nodes_drawn:

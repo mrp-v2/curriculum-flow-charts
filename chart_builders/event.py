@@ -6,10 +6,17 @@ from util.chart_context import ChartContext
 
 
 class EventChartBuilder(BaseChartBuilder):
-    """Draws charts that focus on a single event, drawing all things related to that event."""
+    """
+    Draws charts that focus on a single event, drawing all things related to that event.
+    """
 
     def __init__(self, context: ChartContext, event: Event = None, chart_name: str = None):
-        super().__init__(context, f'{event.unit}_{event.name}' if event else chart_name)
+        """
+        :param context: The ChartContext to use for this builder.
+        :param event: The event to focus on.
+        :param chart_name: The name of this chart. Defaults to the event name
+        """
+        super().__init__(context, f'{event.name}' if event else chart_name)
         self._event_graphs: dict[Event, tuple[Digraph | None, Digraph | None]] = {}
         """Stores the sub-graphs for each event as a tuple: (required graph, taught graph)."""
 
@@ -143,7 +150,7 @@ class EventChartBuilder(BaseChartBuilder):
             topic_event = default_event
         if topic_event is None:
             print(f'WARNING: topic \'{topic}\' is not taught before it is required '
-                  f'in {default_event.unit}, {default_event.name}!')
+                  f'in Unit {default_event.unit}, {default_event.name}!')
         else:
             original_event = self._draw_topic(topic, topic_event)
             if parent_node is not None:
@@ -194,6 +201,11 @@ class EventChartBuilder(BaseChartBuilder):
         self._draw_dependent_tree_helper(event.next, topics_of_interest)
 
     def draw_event_relations(self, event: Event):
+        """
+        TODO
+        :param event:
+        :return:
+        """
         if event.topics_taught:
             if event.topics_required:
                 for topic in event.topics_required:

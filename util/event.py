@@ -3,20 +3,30 @@ from typing import Literal
 
 class Event:
     """
-    Stores information about an event: its unit, name, the topics taught, and the topics required.
-    Also stores a link to the previous and next event.
+    Stores information about an event.
     """
 
-    def __init__(self, unit: str, name: str, topics_taught: set[str], topics_required: set[str]):
-        self.unit: str = unit
+    def __init__(self, name: str, topics_taught: set[str], topics_required: set[str]):
+        """
+        :param name: The name of the event.
+        :param topics_taught: The names of topics taught in the event.
+        :param topics_required: The names of topics required in the event.
+        """
         self.name: str = name
+        """The name of the event."""
         self.topics_taught: set[str] = topics_taught
+        """The names of topics taught in the event."""
         self.topics_required: set[str] = topics_required
+        """The names of topics required in the event."""
         self.next: Event | None = None
+        """The event that comes after this event."""
         event_type, unit_number, event_id = _decide_event_type_and_number(self.name)
         self.event_type: EventType = event_type
-        self.unit_number: int = unit_number
-        self.event_id: str | None = event_id
+        """The type of the event."""
+        self.unit: int = unit_number
+        """The unit of the event."""
+        self.group_id: str | None = event_id
+        """The group id of the event."""
 
     def __str__(self):
         return self.name
@@ -24,17 +34,17 @@ class Event:
     def __lt__(self, other) -> bool:
         if isinstance(other, Event):
             event: Event = other
-            if self.unit_number < event.unit_number:
+            if self.unit < event.unit:
                 return True
-            if self.unit_number > event.unit_number:
+            if self.unit > event.unit:
                 return False
-            if event.event_id is None:
-                return self.event_id is not None
-            if self.event_id is None:
+            if event.group_id is None:
+                return self.group_id is not None
+            if self.group_id is None:
                 return False
-            if self.event_id < event.event_id:
+            if self.group_id < event.group_id:
                 return True
-            if self.event_id > event.event_id:
+            if self.group_id > event.group_id:
                 return False
             return _event_type_less_than(self.event_type, event.event_type)
 
@@ -42,9 +52,15 @@ class Event:
 
 
 EventType = Literal['lecture', 'lab', 'homework', 'project']
+"""The types an event can have. Either 'lecture', 'lab', 'homework', or 'project'."""
 
 
 def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
+    """
+    Calculates the event type, unit, and group id using the event name.
+    :param name: The name of the event.
+    :return: A tuple containing the event type, the unit, and the group id.
+    """
     short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
     lecture = False
     lab = False
@@ -85,14 +101,19 @@ def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None
         elif number_end > -1 and short_name[i].isdigit():
             raise ValueError(f'Cannot distinguish event number of {name}')
     unit_number = int(short_name[number_start:number_end])
-    event_id = short_name[number_end] if short_name[number_end].strip() else None
-    if event_id is None:
+    group_id = short_name[number_end] if short_name[number_end].strip() else None
+    if group_id is None:
         if event_type != 'project':
             raise ValueError(f'Event {name} is missing an id')
-    return event_type, unit_number, event_id
+    return event_type, unit_number, group_id
 
 
 def _event_type_less_than(type1: EventType, type2: EventType) -> bool:
+    """
+    Determines if an event type comes before another event type.
+    Ordering from first to last is 'lecture' -> 'lab' -> 'homework' -> 'project'.
+    :return: Whether type1 comes before type2.
+    """
     if type1 == 'lecture':
         return type2 != 'lecture'
     if type1 == 'lab':
