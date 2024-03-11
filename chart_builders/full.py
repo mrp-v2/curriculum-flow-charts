@@ -20,14 +20,14 @@ class FullChartBuilder(EventChartBuilder):
         self._node_ranks: dict[str, int] = {}
         """Tracks the rank of each node"""
 
-    def __get_tail_node(self, topic: str, event: Event) -> str | None:
+    def __get_tail_node(self, topic: str, event: Event, include_start: bool) -> str | None:
         """
         Decides which node should be the tail.
         :param topic: The topic of the head node.
         :param event: The event of the head node.
         :return: The node where topic was most recently taught or required.
         """
-        last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
+        last_taught_time = self._context.info.get_most_recent_taught_time(event, topic, include_start)
         if topic not in self._latest_required_times and last_taught_time is None:
             return None
         if topic not in self._latest_required_times:
@@ -52,15 +52,15 @@ class FullChartBuilder(EventChartBuilder):
 
     def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
             tuple[str, int]:
-        head = self._draw_topic_only(topic, event, default_side)
+        head = self._draw_topic_only(topic, event, default_side, color=f'{"blue" if default_side == "taught" else ""}')
         rank = self.__draw_rank_edge(head, topic, event, base_rank, default_side == 'taught')
-        tail = self.__get_tail_node(topic, event)
+        tail = self.__get_tail_node(topic, event, default_side == 'required')
         if tail is not None:
             rank_dif = rank - self._node_ranks[tail]
             self._draw_edge(tail, head, constraint='False', weight=f'{2 if abs(rank_dif) <= 1 else 1}')
         if default_side == 'taught':
             for dependency in self._context.info.topics[topic].dependencies:
-                last_dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
+                last_dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency)
                 if last_dependency_taught_time is not None:
                     self._draw_edge(qualify(dependency, last_dependency_taught_time, 'taught'), head,
                                     constraint='False')
@@ -93,15 +93,15 @@ class FullChartBuilder(EventChartBuilder):
     def __draw_id(self, event_id, last_id_rank, unit) -> int:
         max_rank: int | None = None
         for event in self._context.info.grouped_events[unit][event_id].values():
+            for topic in event.topics_taught:
+                name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'taught', last_id_rank)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
             for topic in event.topics_required:
                 name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'required', last_id_rank)
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
                 self._latest_required_times[topic] = event, name
-            for topic in event.topics_taught:
-                name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'taught', last_id_rank)
-                if max_rank is None or rank > max_rank:
-                    max_rank = rank
         if max_rank is None:
             raise ValueError('Rank error: event id had no rank')
         return max_rank + 1
@@ -122,11 +122,9 @@ class FullChartBuilder(EventChartBuilder):
             else:
                 temp.attr(label=f'Unit {event.unit}', style='rounded')
             self._event_id_graphs[event.unit][event.group_id] = temp
-        r_graph, t_graph = self._event_graphs[event]
-        if r_graph is not None:
-            r_graph.attr(margin='32', style='dotted')
-        if t_graph is not None:
-            t_graph.attr(margin='32', style='dotted')
+        graph = self._event_graphs[event]
+        if graph is not None:
+            graph.attr(margin='32', style='dotted')
         return super()._finish_event(event, self._event_id_graphs[event.unit][event.group_id], style='dashed')
 
     def finish(self):
