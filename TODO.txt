@@ -1,13 +1,8 @@
-make full chart ordering better
-ideas:
-1. group by unit, or by item number within unit, projects off to side
-2. consolidate arrows
+1. no borders for group id, don't show label for group id either
+2. fix border inconsistency on events
+
+Other charts:
+3. group by unit and group id in other charts too.
 
 command-line:
--new chart type that focuses on a specific topic
-
-
-TODO
-
--no borders for group id, don't show label for group id either
--fix border inconsistency on events
+4. new chart type that focuses on a specific topic

@@ -1,6 +1,6 @@
 # Generated graph files
 *.gv
-*.gv.pdf
+*.pdf
 
 # Local spreadsheet files
 *.tsv
