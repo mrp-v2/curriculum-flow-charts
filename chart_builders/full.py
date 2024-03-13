@@ -31,12 +31,12 @@ class FullChartBuilder(EventChartBuilder):
         if topic not in self._latest_required_times and last_taught_time is None:
             return None
         if topic not in self._latest_required_times:
-            return qualify(topic, last_taught_time, 'taught')
+            return qualify(topic, last_taught_time)
         if last_taught_time is None:
             return self._latest_required_times[topic][1]
         # return which is more recent
         if self._latest_required_times[topic][0] < last_taught_time:
-            return qualify(topic, last_taught_time, 'taught')
+            return qualify(topic, last_taught_time)
         else:
             return self._latest_required_times[topic][1]
 
@@ -52,7 +52,7 @@ class FullChartBuilder(EventChartBuilder):
 
     def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
             tuple[str, int]:
-        head = self._draw_topic_only(topic, event, default_side, color=f'{"blue" if default_side == "taught" else ""}')
+        head = self._draw_topic_only(topic, event, color=f'{"blue" if default_side == "taught" else ""}')
         rank = self.__draw_rank_edge(head, topic, event, base_rank, default_side == 'taught')
         tail = self.__get_tail_node(topic, event, default_side == 'required')
         if tail is not None:
@@ -60,9 +60,9 @@ class FullChartBuilder(EventChartBuilder):
             self._draw_edge(tail, head, constraint='False', weight=f'{2 if abs(rank_dif) <= 1 else 1}')
         if default_side == 'taught':
             for dependency in self._context.info.topics[topic].dependencies:
-                last_dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency)
+                last_dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
                 if last_dependency_taught_time is not None:
-                    self._draw_edge(qualify(dependency, last_dependency_taught_time, 'taught'), head,
+                    self._draw_edge(qualify(dependency, last_dependency_taught_time), head,
                                     constraint='False')
         return head, rank
 
