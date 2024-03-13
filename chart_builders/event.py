@@ -10,13 +10,12 @@ class EventChartBuilder(BaseChartBuilder):
     Draws charts that focus on a single event, drawing all things related to that event.
     """
 
-    def __init__(self, context: ChartContext, event: Event = None, chart_name: str = None):
+    def __init__(self, context: ChartContext, chart_name: str = None):
         """
         :param context: The ChartContext to use for this builder.
-        :param event: The event to focus on.
         :param chart_name: The name of this chart. Defaults to the event name
         """
-        super().__init__(context, f'{event.name}' if event else chart_name)
+        super().__init__(context, chart_name if chart_name else context.focus_event.name)
         self._event_graphs: dict[Event, Digraph] = {}
         """Stores the sub-graphs for each event."""
         self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
@@ -175,10 +174,9 @@ class EventChartBuilder(BaseChartBuilder):
             start_rank = self._draw_id(event_id, start_rank, unit)
         return start_rank
 
-    def draw_event_relations(self, event: Event):
+    def draw(self):
         """
         TODO
-        :param event:
         :return:
         """
         start_rank: int = 0
@@ -265,7 +263,8 @@ class EventChartBuilder(BaseChartBuilder):
         return rank
 
     def _draw_event(self, event: Event, start_rank: int) -> int:
-        return start_rank
+        max_rank: int | None = None
+        return max_rank
 
     def _draw_id(self, event_id, start_rank, unit) -> int:
         max_rank: int | None = None

@@ -11,24 +11,19 @@ from util.parse_dependency_info import read_info
 ChartType = Literal['topics', 'topics_by_event', 'event', 'full']
 
 
-def draw_chart(context: ChartContext, chart_type: ChartType, event: Event = None):
+def draw_chart(context: ChartContext, chart_type: ChartType):
     """
     Draws the ChartType specified by chart_type and using the given ChartContext.
     :param context: The ChartContext to use for drawing the chart.
     :param chart_type: The ChartType to draw.
-    :param event: The event to use if chart_type is 'event'
     """
-    if event is not None and chart_type != 'event':
-        raise ValueError('Cannot specify an event if chart_type is not \'event\'')
-    if event is None and chart_type == 'event':
-        raise ValueError('Cannot draw an \'event\' chart without an event specified')
     match chart_type:
         case 'topics':
             topic_chart(context)
         case 'topics_by_event':
             topic_by_event_chart(context)
         case 'event':
-            event_chart(context, event)
+            event_chart(context)
         case 'full':
             full_chart(context)
 
@@ -36,8 +31,6 @@ def draw_chart(context: ChartContext, chart_type: ChartType, event: Event = None
 def __main(args: Namespace):
     """Handles the parsed command line arguments."""
     info = read_info(args.topics_file, args.events_file)
-    output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
-    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [])
     chart_type: ChartType | None = None
     event: Event | None = None
     if args.topics:
@@ -54,8 +47,10 @@ def __main(args: Namespace):
             event = matches[0]
     if args.full:
         chart_type = 'full'
+    output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
+    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [], event)
     if chart_type:
-        draw_chart(context, chart_type, event)
+        draw_chart(context, chart_type)
 
 
 if __name__ == '__main__':

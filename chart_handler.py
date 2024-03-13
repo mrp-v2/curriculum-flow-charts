@@ -48,15 +48,14 @@ def topic_by_event_chart(context: ChartContext):
     __view_graph(context, builder.finish())
 
 
-def event_chart(context: ChartContext, focus_event: Event):
+def event_chart(context: ChartContext):
     """
     Draws an event chart.
     :param context: The ChartContext to use to draw the chart.
-    :param focus_event: The event to focus the chart on.
     """
-    builder: EventChartBuilder = EventChartBuilder(context, focus_event)
-    builder.label(f'Unit {focus_event.unit}, {focus_event.name} Dependencies')
-    builder.draw_event_relations(focus_event)
+    builder: EventChartBuilder = EventChartBuilder(context)
+    builder.label(f'{context.focus_event.name} Dependencies')
+    builder.draw()
     __view_graph(context, builder.finish())
 
 
