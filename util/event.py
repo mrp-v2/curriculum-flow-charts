@@ -1,4 +1,12 @@
+from enum import Enum
 from typing import Literal
+
+
+class EventType(Enum):
+    LECTURE = 1
+    LAB = 2
+    HOMEWORK = 3
+    PROJECT = 4
 
 
 class Event:
@@ -34,20 +42,21 @@ class Event:
     def __lt__(self, other) -> bool:
         if isinstance(other, Event):
             event: Event = other
-            if self.unit < event.unit:
+            if event.unit == self.unit:
+                if event.group_id == self.group_id:
+                    return _event_type_less_than(self.event_type, event.event_type)
+                elif event.group_id is None:
+                    return self.group_id is not None
+                elif self.group_id is None:
+                    return False
+                elif self.group_id < event.group_id:
+                    return True
+                elif self.group_id > event.group_id:
+                    return False
+            elif self.unit < event.unit:
                 return True
-            if self.unit > event.unit:
+            elif self.unit > event.unit:
                 return False
-            if event.group_id is None:
-                return self.group_id is not None
-            if self.group_id is None:
-                return False
-            if self.group_id < event.group_id:
-                return True
-            if self.group_id > event.group_id:
-                return False
-            return _event_type_less_than(self.event_type, event.event_type)
-
         return False
 
 

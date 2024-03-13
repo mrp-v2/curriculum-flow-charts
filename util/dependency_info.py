@@ -1,3 +1,5 @@
+from typing import Generator
+
 from util.event import Event, EventType
 from util.topic import Topic
 
@@ -14,6 +16,26 @@ class DependencyInfo:
         """Allows access to an event by unit, id, and type"""
         self.topics: dict[str, Topic] = {}
         """Maps topic names to their Topic object"""
+
+    def get_events(self, start: Event = None, include_start: bool = None, forward: bool = True) -> Generator[
+        Event, None, None]:
+        """
+        Iterates through all events.
+        """
+        if start is not None and include_start is None:
+            raise ValueError('If start is not None, then include_start should also not be None')
+        if forward:
+            for unit in self.grouped_events:
+                for group_id in self.grouped_events[unit]:
+                    for event in self.grouped_events[unit][group_id].values():
+                        if start is None or start < event:
+                            yield event
+        else:
+            for unit in self.grouped_events.__reversed__():
+                for group_id in self.grouped_events[unit].__reversed__():
+                    for event in self.grouped_events[unit][group_id].values().__reversed__():
+                        if start is None:
+                            yield event
 
     def is_topic_dependent_on(self, topic: str, dependency: str) -> bool:
         """
@@ -77,7 +99,7 @@ class DependencyInfo:
         """
         # Ensure only one project per unit
         units_with_projects: set[int] = set()
-        for event in self.events:
+        for event in self.get_events():
             if event.event_type == 'project':
                 if event.unit in units_with_projects:
                     raise ValueError(f"Unit {event.unit} has multiple projects!")
@@ -87,7 +109,7 @@ class DependencyInfo:
             _simplify(self, topic.dependencies, topic.__str__())
         # simplify event topics and ensure all topics are referenced in an event
         unused_topics = [item for item in self.topics]
-        for event in self.events:
+        for event in self.get_events():
             _simplify(self, event.topics_required, event.__str__())
             for topic in event.topics_taught:
                 if topic in unused_topics:
