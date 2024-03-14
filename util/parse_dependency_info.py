@@ -111,7 +111,6 @@ def __add_event(info: DependencyInfo, event: Event) -> bool:
     if not event.topics_taught and not event.topics_required:
         print(f'DATA-ERROR: Ignoring event {event} because no topics are taught or required by it')
         return False
-    info.events.append(event)
     if event.unit not in info.grouped_events:
         info.grouped_events[event.unit] = {}
     if event.group_id not in info.grouped_events[event.unit]:

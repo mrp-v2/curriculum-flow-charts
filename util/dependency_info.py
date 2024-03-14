@@ -10,8 +10,6 @@ class DependencyInfo:
     """
 
     def __init__(self):
-        self.events: list[Event] = []
-        """A list of all events in chronological order"""
         self.grouped_events: dict[int, dict[str, dict[EventType, Event]]] = {}
         """Allows access to an event by unit, id, and type"""
         self.topics: dict[str, Topic] = {}
@@ -28,14 +26,22 @@ class DependencyInfo:
             for unit in self.grouped_events:
                 for group_id in self.grouped_events[unit]:
                     for event in self.grouped_events[unit][group_id].values():
-                        if start is None or start < event:
-                            yield event
+                        if start is not None:
+                            if event < start:
+                                continue
+                            elif event == start and not include_start:
+                                continue
+                        yield event
         else:
             for unit in self.grouped_events.__reversed__():
                 for group_id in self.grouped_events[unit].__reversed__():
                     for event in self.grouped_events[unit][group_id].values().__reversed__():
-                        if start is None:
-                            yield event
+                        if start is not None:
+                            if event > start:
+                                continue
+                            elif event == start and not include_start:
+                                continue
+                        yield event
 
     def is_topic_dependent_on(self, topic: str, dependency: str) -> bool:
         """
@@ -128,14 +134,11 @@ class DependencyInfo:
         :param include_start: If true, includes the starting event in the search.
         :return: The event if one is found, otherwise None.
         """
-        index: int = self.events.index(start)
-        if not include_start:
-            index -= 1
-        while topic not in self.events[index].topics_taught and index >= 0:
-            index -= 1
-        if index == -1:
-            return None
-        return self.events[index]
+        for event in self.get_events(start, include_start):
+            if topic not in event.topics_taught:
+                continue
+            return event
+        return None
 
 
 def _simplify(info: DependencyInfo, topics: set[str], title: str):

@@ -8,6 +8,12 @@ class EventType(Enum):
     HOMEWORK = 3
     PROJECT = 4
 
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
 
 class Event:
     """
@@ -44,24 +50,34 @@ class Event:
             event: Event = other
             if event.unit == self.unit:
                 if event.group_id == self.group_id:
-                    return _event_type_less_than(self.event_type, event.event_type)
+                    return self.event_type < event.event_type
                 elif event.group_id is None:
                     return self.group_id is not None
                 elif self.group_id is None:
                     return False
-                elif self.group_id < event.group_id:
-                    return True
-                elif self.group_id > event.group_id:
-                    return False
-            elif self.unit < event.unit:
-                return True
-            elif self.unit > event.unit:
-                return False
+                return self.group_id < event.group_id
+            return self.unit < event.unit
         return False
 
+    def __gt__(self, other) -> bool:
+        if isinstance(other, Event):
+            event: Event = other
+            if event.unit == self.unit:
+                if event.group_id == self.group_id:
+                    return self.event_type > event.event_type
+                elif event.group_id is None:
+                    return False
+                elif self.group_id is None:
+                    return other.group_id is not None
+                return self.group_id > event.group_id
+            return self.unit > event.unit
+        return False
 
-EventType = Literal['lecture', 'lab', 'homework', 'project']
-"""The types an event can have. Either 'lecture', 'lab', 'homework', or 'project'."""
+    def __le__(self, other):
+        return not self > other
+
+    def __ge__(self, other):
+        return not self < other
 
 
 def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
@@ -87,17 +103,17 @@ def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None
     if lecture:
         if lab or homework or project:
             raise ValueError(f'Cannot distinguish event type of {name}')
-        event_type = 'lecture'
+        event_type = EventType.LECTURE
     elif lab:
         if homework or project:
             raise ValueError(f'Cannot distinguish event type of {name}')
-        event_type = 'lab'
+        event_type = EventType.LAB
     elif homework:
         if project:
             raise ValueError(f'Cannot distinguish event type of {name}')
-        event_type = 'homework'
+        event_type = EventType.HOMEWORK
     elif project:
-        event_type = 'project'
+        event_type = EventType.PROJECT
     else:
         raise ValueError(f'Cannot distinguish event type of {name}')
     number_start: int = -1
@@ -112,21 +128,6 @@ def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None
     unit_number = int(short_name[number_start:number_end])
     group_id = short_name[number_end] if short_name[number_end].strip() else None
     if group_id is None:
-        if event_type != 'project':
+        if event_type != EventType.PROJECT:
             raise ValueError(f'Event {name} is missing an id')
     return event_type, unit_number, group_id
-
-
-def _event_type_less_than(type1: EventType, type2: EventType) -> bool:
-    """
-    Determines if an event type comes before another event type.
-    Ordering from first to last is 'lecture' -> 'lab' -> 'homework' -> 'project'.
-    :return: Whether type1 comes before type2.
-    """
-    if type1 == 'lecture':
-        return type2 != 'lecture'
-    if type1 == 'lab':
-        return type2 != 'lecture' and type2 != 'lab'
-    if type1 == 'homework':
-        return type2 == 'project'
-    return False
