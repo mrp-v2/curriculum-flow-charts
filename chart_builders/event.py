@@ -274,10 +274,31 @@ class EventChartBuilder(BaseChartBuilder):
 
     def _draw_id(self, event_id, start_rank, unit) -> int:
         max_rank: int | None = None
+        last_order_node: str | None = None
         for event in self._context.info.grouped_events[unit][event_id].values():
+            new_order_node: str | None = None
+            if event.next:
+                if event.next.group_id == event.group_id:
+                    new_order_node = self.__draw_sided_topic('connect_tail', event, 'required',
+                                                             color='red' if self._context.verbose_graph else 'invis',
+                                                             shape='' if self._context.verbose_graph else 'point')
+                    self._draw_rank_edge(new_order_node, start_rank, False)
             rank = self._draw_event(event, start_rank)
             if max_rank is None or rank > max_rank:
                 max_rank = rank
+            if last_order_node is not None:
+                self._connect_events(last_order_node, event, start_rank)
+            last_order_node = new_order_node
         if max_rank is None:
             raise ValueError('Rank error: event id had no rank')
         return max_rank + 1
+
+    def _connect_events(self, tail: str, b: Event, rank: int):
+        head = self.__draw_sided_topic('connect_head', b, 'required',
+                                       color='red' if self._context.verbose_graph else 'invis',
+                                       shape='' if self._context.verbose_graph else 'point')
+        self._draw_rank_edge(head, rank, False)
+        sub_graph = Digraph()
+        sub_graph.attr(rank='same', rankdir='LR')
+        sub_graph.edge(tail, head, weight='10', color='red', style='' if self._context.verbose_graph else 'invis')
+        self._graph.subgraph(sub_graph)
