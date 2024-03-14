@@ -1,4 +1,5 @@
 # Generated graph files
+/output
 *.gv
 *.pdf
 

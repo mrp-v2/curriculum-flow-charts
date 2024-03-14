@@ -29,7 +29,7 @@ class EventChartBuilder(BaseChartBuilder):
         self._node_ranks: dict[str, int] = {}
         """Tracks the rank of each node"""
 
-    def __draw_sided_topic(self, topic: str, event: Event, side: Side, attrs) -> str:
+    def __draw_sided_topic(self, topic: str, event: Event, side: Side, _attributes=None, **attrs) -> str:
         """
         Draws a topic under the specified graph of an event.
         :param topic: The name of the topic to draw.
@@ -43,7 +43,8 @@ class EventChartBuilder(BaseChartBuilder):
             graph = Digraph(f'{event.name}')
             graph.attr(cluster='True')
         self._event_graphs[event] = graph
-        self._draw_node(qualified_name, topic, graph, attrs, color=f'{"blue" if side == "taught" else ""}')
+        self._draw_node(qualified_name, topic, graph, _attributes if _attributes else attrs,
+                        color=f'{"blue" if side == "taught" else ""}')
         return qualified_name
 
     def _draw_topic_only(self, topic: str, event: Event, **attrs) -> str:
@@ -213,7 +214,7 @@ class EventChartBuilder(BaseChartBuilder):
             self._finish_event(event, self._graph)
         return self._graph
 
-    def __get_tail_node(self, topic: str, event: Event, include_start: bool) -> str | None:
+    def _get_tail_node(self, topic: str, event: Event, include_start: bool) -> str | None:
         """
         Decides which node should be the tail.
         :param topic: The topic of the head node.
@@ -236,7 +237,7 @@ class EventChartBuilder(BaseChartBuilder):
     def __draw_rank_node(self) -> str:
         return self._draw_node(f'rank_node_{self._last_rank}',
                                shape='ellipse' if self._context.verbose_graph else 'point',
-                               style='' if self._context.verbose_graph else 'invis')
+                               color='red' if self._context.verbose_graph else 'invis')
 
     def __ensure_rank_exists(self, rank: int):
         """Ensures there are sufficient rank nodes to use the specified rank."""
@@ -250,16 +251,21 @@ class EventChartBuilder(BaseChartBuilder):
             self._rank_nodes[self._last_rank] = name
             if self._last_rank > 0:
                 self._draw_edge(self._rank_nodes[self._last_rank - 1], name,
-                                style='' if self._context.verbose_graph else 'invis')
+                                color='red' if self._context.verbose_graph else 'invis')
 
-    def __draw_rank_edge(self, node: str, topic: str, event: Event, base_rank: int, adjust_depth: bool) -> int:
+    def _draw_rank_edge(self, node: str, base_rank: int, adjust_depth: bool, topic: str = None,
+                        event: Event = None) -> int:
         rank: int = base_rank
         if adjust_depth:
+            if topic is None:
+                raise ValueError('If adjust_depth is True, topic should not be None')
+            if event is None:
+                raise ValueError('If adjust_depth is True, event should not be None')
             rank += self._context.info.get_topic_taught_depth(topic, event)
         self._node_ranks[node] = rank
         if rank > 0:
             self.__ensure_rank_exists(rank - 1)
-            self._draw_edge(self._rank_nodes[rank - 1], node, style='' if self._context.verbose_graph else 'invis')
+            self._draw_edge(self._rank_nodes[rank - 1], node, color='red' if self._context.verbose_graph else 'invis')
         return rank
 
     def _draw_event(self, event: Event, start_rank: int) -> int:

@@ -13,8 +13,8 @@ class FullChartBuilder(EventChartBuilder):
     def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
             tuple[str, int]:
         head = self._draw_topic_only(topic, event, color=f'{"blue" if default_side == "taught" else ""}')
-        rank = self.__draw_rank_edge(head, topic, event, base_rank, default_side == 'taught')
-        tail = self.__get_tail_node(topic, event, default_side == 'required')
+        rank = self._draw_rank_edge(head, base_rank, default_side == 'taught', topic, event)
+        tail = self._get_tail_node(topic, event, default_side == 'required')
         if tail is not None:
             rank_dif = rank - self._node_ranks[tail]
             self._draw_edge(tail, head, constraint='False', weight=f'{2 if abs(rank_dif) <= 1 else 1}')
