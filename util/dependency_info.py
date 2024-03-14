@@ -134,7 +134,7 @@ class DependencyInfo:
         :param include_start: If true, includes the starting event in the search.
         :return: The event if one is found, otherwise None.
         """
-        for event in self.get_events(start, include_start):
+        for event in self.get_events(start, include_start, False):
             if topic not in event.topics_taught:
                 continue
             return event
