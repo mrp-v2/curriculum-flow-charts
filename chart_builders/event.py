@@ -29,7 +29,7 @@ class EventChartBuilder(BaseChartBuilder):
         self._node_ranks: dict[str, int] = {}
         """Tracks the rank of each node"""
 
-    def __draw_sided_topic(self, topic: str, event: Event, side: Side, attrs) -> str:
+    def __draw_sided_topic(self, topic: str, event: Event, side: Side, _attributes=None, **attrs) -> str:
         """
         Draws a topic under the specified graph of an event.
         :param topic: The name of the topic to draw.
@@ -43,7 +43,8 @@ class EventChartBuilder(BaseChartBuilder):
             graph = Digraph(f'{event.name}')
             graph.attr(cluster='True')
         self._event_graphs[event] = graph
-        self._draw_node(qualified_name, topic, graph, attrs, color=f'{"blue" if side == "taught" else ""}')
+        self._draw_node(qualified_name, topic, graph, _attributes if _attributes else attrs,
+                        color=f'{"blue" if side == "taught" else ""}')
         return qualified_name
 
     def _draw_topic_only(self, topic: str, event: Event, **attrs) -> str:
