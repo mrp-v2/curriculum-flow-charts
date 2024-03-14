@@ -300,5 +300,5 @@ class EventChartBuilder(BaseChartBuilder):
         self._draw_rank_edge(head, rank, False)
         sub_graph = Digraph()
         sub_graph.attr(rank='same', rankdir='LR')
-        sub_graph.edge(tail, head, weight='10', color='red', style='' if self._context.verbose_graph else 'invis')
+        sub_graph.edge(tail, head, weight='1000000', color='red', style='' if self._context.verbose_graph else 'invis')
         self._graph.subgraph(sub_graph)
