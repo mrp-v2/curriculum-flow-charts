@@ -1,5 +1,7 @@
 from enum import Enum
-from typing import Literal
+from typing import Generator
+
+from util.topic import Topic
 
 
 class EventType(Enum):
@@ -20,7 +22,7 @@ class Event:
     Stores information about an event.
     """
 
-    def __init__(self, name: str, topics_taught: set[str], topics_required: set[str]):
+    def __init__(self, name: str, topics_taught: set[Topic], topics_required: set[Topic]):
         """
         :param name: The name of the event.
         :param topics_taught: The names of topics taught in the event.
@@ -28,9 +30,9 @@ class Event:
         """
         self.name: str = name
         """The name of the event."""
-        self.topics_taught: set[str] = topics_taught
+        self.topics_taught: set[Topic] = topics_taught
         """The names of topics taught in the event."""
-        self.topics_required: set[str] = topics_required
+        self.topics_required: set[Topic] = topics_required
         """The names of topics required in the event."""
         self.next: Event | None = None
         """The event that comes after this event."""
@@ -78,6 +80,19 @@ class Event:
 
     def __ge__(self, other):
         return not self < other
+
+    def get_all_topics(self) -> Generator[Topic, None, None]:
+        topics_seen: set[Topic] = set()
+        for topic in self.topics_taught:
+            if topic in topics_seen:
+                continue
+            topics_seen.add(topic)
+            yield topic
+        for topic in self.topics_required:
+            if topic in topics_seen:
+                continue
+            topics_seen.add(topic)
+            yield topic
 
 
 def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:

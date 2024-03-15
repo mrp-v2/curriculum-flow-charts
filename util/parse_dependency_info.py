@@ -6,22 +6,7 @@ from util.event import Event
 from util.topic import Topic
 
 
-def __verify_topics(topics: set[str], event: str, prefix: str, info: DependencyInfo):
-    """
-    Verifies that a set of topics are all found in the topics list of a DependencyInfo object.
-    Prints warnings if a topic is in the set but not in the DependencyInfo object.
-    :param topics: The set of topics to verify.
-    :param event: The event the topics are in, used to print a warning if a topic is missing.
-    :param prefix: Used to print a warning if a topic is missing.
-    :param info: The DependencyInfo object to check if the topics are in.
-    :return:
-    """
-    for topic in topics:
-        if topic not in info.topics:
-            print(f'WARNING: {prefix} topic \'{topic}\' in \'{event}\' not in topics list')
-
-
-def __parse_topics(topics_string: str, comment: str) -> set[str]:
+def __parse_topic_names(topics_string: str, comment: str) -> set[str]:
     """
     Parses a semicolon-separated list of topics into a set.
     Prints a warning if a duplicate topic is found.
@@ -29,10 +14,31 @@ def __parse_topics(topics_string: str, comment: str) -> set[str]:
     :param comment: Used when printing a warning about a duplicate topic.
     :return: A set of topic names.
     """
-    topics = set()
+    topics: set[str] = set()
     for topic in topics_string.split(';'):
         topic = topic.strip()
         if topic:
+            if topic not in topics:
+                topics.add(topic)
+            else:
+                print(f'DATA-ERROR: Ignoring duplicate topic \'{topic}\' {comment}')
+    return topics
+
+
+def __parse_topics(topics_string: str, comment: str, known_topics: dict[str, Topic]) -> set[Topic]:
+    """
+    Parses a semicolon-separated list of topics into a set.
+    Prints a warning if a duplicate topic is found.
+    :param topics_string: The topics string.
+    :param comment: Used when printing a warning about a duplicate topic.
+    :param known_topics: A set of known Topic objects.
+    :return: A set of topics.
+    """
+    topics: set[Topic] = set()
+    for topic in topics_string.split(';'):
+        topic = topic.strip()
+        if topic:
+            topic = known_topics[topic]
             if topic not in topics:
                 topics.add(topic)
             else:
@@ -55,37 +61,47 @@ def __order_events(info: DependencyInfo):
                 last_event = info.grouped_events[unit][event_id][event_type]
 
 
-def __read_topics(info: DependencyInfo, topics_file: IOBase):
+def __read_topics(info: DependencyInfo, topics_file: IOBase) -> dict[str, Topic]:
     """
     Reads the topics file into a DependencyInfo object.
     :param info: The DependencyInfo object to read information into.
     :param topics_file: The topics file.
     """
+    topics_by_topic: dict[Topic, set[str]] = {}
+    topics_by_name: dict[str, Topic] = {}
     topics_reader = csv.reader(topics_file, delimiter='\t')
     first_row: bool = True
     for row in topics_reader:
         if first_row:
             first_row = False
             continue
-        topic = row[0].strip()
-        dependencies = __parse_topics(row[1], f'dependency of \'{topic}\'')
-        info.topics[topic] = Topic(topic, dependencies, row[2].strip())
+        name = row[0].strip()
+        dependencies: set[str] = __parse_topic_names(row[1], f'dependency of \'{name}\'')
+        topic = Topic(name, row[2].strip())
+        topics_by_topic[topic] = dependencies
+        topics_by_name[name] = topic
     for topic in info.topics:
         for dependency in info.topics[topic].dependencies:
             if dependency not in info.topics:
                 print(f'DATA-WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
+    for topic in topics_by_topic:
+        dependencies: set[Topic] = set()
+        for dependency in topics_by_topic[topic]:
+            dependencies.add(topics_by_name[dependency])
+        topic.add_dependencies(dependencies)
+    return topics_by_name
 
 
-def __read_event(info: DependencyInfo, line: list[str], topic_taught_events: dict[str, str]) -> Event:
+def __read_event(topics: dict[str, Topic], line: list[str], topic_taught_events: dict[Topic, str]) -> Event:
     """
     Reads an event from a list of strings (e.g. the entries of a line in a TSV file).
-    :param info: The DependencyInfo object to use to verify topics.
+    :param topics: A map of topic names to topics.
     :param line: The strings to read the event from.
     :param topic_taught_events: A dictionary mapping each topic to the name of the last event it was taught in.
     :return: An event.
     """
     event_name = line[1]
-    topics_taught = __parse_topics(line[2], f'taught in \'{event_name}\'')
+    topics_taught = __parse_topics(line[2], f'taught in \'{event_name}\'', topics)
     for topic in topics_taught:
         if topic in topic_taught_events:
             print(f'DATA-WARNING: topic \'{topic}\' is taught in \'{event_name}\','
@@ -93,9 +109,7 @@ def __read_event(info: DependencyInfo, line: list[str], topic_taught_events: dic
             topic_taught_events[topic] = event_name
         else:
             topic_taught_events[topic] = event_name
-    __verify_topics(topics_taught, event_name, 'taught', info)
-    topics_needed = __parse_topics(line[3], f'required in \'{event_name}\'')
-    __verify_topics(topics_needed, event_name, 'required', info)
+    topics_needed = __parse_topics(line[3], f'required in \'{event_name}\'', topics)
     event_obj = Event(event_name, topics_taught, topics_needed)
     return event_obj
 
@@ -119,13 +133,14 @@ def __add_event(info: DependencyInfo, event: Event) -> bool:
     return True
 
 
-def __read_events(info: DependencyInfo, events_file: IOBase):
+def __read_events(info: DependencyInfo, events_file: IOBase, topics: dict[str, Topic]):
     """
     Reads the events file into a DependencyInfo object.
     :param info: The DependencyInfo object to read information into.
     :param events_file: The events file.
+    :param topics: A map of topic names to topics.
     """
-    topic_taught_events: dict[str, str] = {}
+    topic_taught_events: dict[Topic, str] = {}
     events_reader = csv.reader(events_file, delimiter='\t')
     first_row: bool = True
     last_event: Event | None = None
@@ -134,7 +149,7 @@ def __read_events(info: DependencyInfo, events_file: IOBase):
         if first_row:
             first_row = False
             continue
-        event = __read_event(info, row, topic_taught_events)
+        event = __read_event(topics, row, topic_taught_events)
         if __add_event(info, event):
             if last_event is not None:
                 last_event.next = event
@@ -149,7 +164,7 @@ def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
     :return: A DependencyInfo object.
     """
     info = DependencyInfo()
-    __read_topics(info, topics_file)
-    __read_events(info, events_file)
+    topics = __read_topics(info, topics_file)
+    __read_events(info, events_file, topics)
     info.finalize()
     return info

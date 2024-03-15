@@ -12,8 +12,15 @@ class DependencyInfo:
     def __init__(self):
         self.grouped_events: dict[int, dict[str, dict[EventType, Event]]] = {}
         """Allows access to an event by unit, id, and type"""
-        self.topics: dict[str, Topic] = {}
-        """Maps topic names to their Topic object"""
+
+    def get_topics(self) -> Generator[Topic, None, None]:
+        topics_seen: set[Topic] = set()
+        for event in self.get_events():
+            for topic in event.topics_taught:
+                if topic in topics_seen:
+                    continue
+                topics_seen.add(topic)
+                yield topic
 
     def get_events(self, start: Event = None, include_start: bool = None, forward: bool = True) -> Generator[
         Event, None, None]:
@@ -43,21 +50,17 @@ class DependencyInfo:
                                 continue
                         yield event
 
-    def is_topic_dependent_on(self, topic: str, dependency: str) -> bool:
+    def is_topic_dependent_on(self, topic: Topic, dependency: Topic) -> bool:
         """
         Returns True if dependency is a dependency - or a sub-dependency - of topic.
         """
         return self.get_topic_dependency_depth(topic, dependency) is not None
 
-    def get_topic_dependency_depth(self, topic: str, dependency: str) -> int | None:
+    def get_topic_dependency_depth(self, topic: Topic, dependency: Topic) -> int | None:
         """
         Calculates the number of dependencies between topic and dependency, including dependency.
         e.g. if dependency is a direct dependency of topic, then the result is 1.
         """
-        try:
-            topic = self.topics[topic]
-        except KeyError:
-            return None
         if dependency in topic.dependencies:
             return 1
         for test_dependency in topic.dependencies:
@@ -66,7 +69,7 @@ class DependencyInfo:
                 return 1 + test_result
         return None
 
-    def get_topic_taught_depth(self, topic: str, event: Event) -> int:
+    def get_topic_taught_depth(self, topic: Topic, event: Event) -> int:
         """
         Calculates the maximum dependency depth of a topic within the taught topics of an event.
         """
@@ -111,10 +114,10 @@ class DependencyInfo:
                     raise ValueError(f"Unit {event.unit} has multiple projects!")
                 units_with_projects.add(event.unit)
         # Simplify topic dependencies
-        for topic in self.topics.values():
+        for topic in self.get_topics():
             _simplify(self, topic.dependencies, topic.__str__())
         # simplify event topics and ensure all topics are referenced in an event
-        unused_topics = [item for item in self.topics]
+        unused_topics = [item for item in self.get_topics()]
         for event in self.get_events():
             _simplify(self, event.topics_required, event.__str__())
             for topic in event.topics_taught:
@@ -126,7 +129,7 @@ class DependencyInfo:
         for topic in unused_topics:
             print(f'DATA-WARNING: topic \'{topic}\' is not used in any event')
 
-    def get_most_recent_taught_time(self, start: Event, topic: str, include_start: bool = False) -> Event | None:
+    def get_most_recent_taught_time(self, start: Event, topic: Topic, include_start: bool = False) -> Event | None:
         """
         Finds the most recent time a topic was taught, before the starting event.
         :param start: The event to search for the topic being taught before it.
@@ -141,13 +144,13 @@ class DependencyInfo:
         return None
 
 
-def _simplify(info: DependencyInfo, topics: set[str], title: str):
+def _simplify(info: DependencyInfo, topics: set[Topic], title: str):
     """
     Takes a list of topics, and removes topics that are dependencies of other topics in the list.
     Prints info about each topic removed in this way.
     :param title: The title of the list, used when printing info messages about removals.
     """
-    topics_to_remove: set[str] = set()
+    topics_to_remove: set[Topic] = set()
     for topic in topics:
         for other_topic in topics:
             if other_topic == topic or topic in topics_to_remove:
