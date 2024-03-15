@@ -37,13 +37,13 @@ class TopicByEventChartBuilder(BaseChartBuilder):
         :param event: The event to use.
         """
         for topic in event.topics_taught:
-            qualified_name = self.__draw_topic(topic, event)
+            qualified_name = self.__draw_topic(topic.name, event)
             last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
             if last_taught_time:
-                self._draw_edge(qualify(topic, last_taught_time), qualified_name)
-            for dependency in self._context.info.topics[topic].dependencies:
+                self._draw_edge(qualify(topic.name, last_taught_time), qualified_name)
+            for dependency in topic.dependencies:
                 dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
-                self._draw_edge(qualify(dependency, dependency_taught_time), qualified_name)
+                self._draw_edge(qualify(dependency.name, dependency_taught_time), qualified_name)
 
     def finish(self):
         for sub_graph in self._event_graphs.values():

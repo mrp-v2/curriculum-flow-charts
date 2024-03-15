@@ -33,7 +33,7 @@ class BaseChartBuilder:
         if parent_graph is None:
             parent_graph = self._graph
         if node not in self.__nodes_drawn:
-            parent_graph.node(node, label if label else node, _attributes if _attributes else attrs)
+            parent_graph.node(node, label if label else node, _attributes, attrs)
         return node
 
     def _draw_edge(self, tail: str, head: str, **attrs):

@@ -3,6 +3,7 @@ from graphviz import Digraph
 from chart_builders.event import EventChartBuilder
 from util import Event, qualify, Side
 from util.chart_context import ChartContext
+from util.topic import Topic
 
 
 class FullChartBuilder(EventChartBuilder):
@@ -10,9 +11,9 @@ class FullChartBuilder(EventChartBuilder):
         super().__init__(context, chart_name='full')
         self._graph.attr(splines='ortho', ranksep='1')
 
-    def __draw_sided_topic_and_dependencies(self, topic: str, event: Event, default_side: Side, base_rank: int) -> \
+    def __draw_topic_and_dependencies(self, topic: Topic, event: Event, default_side: Side, base_rank: int) -> \
             tuple[str, int]:
-        head = self._draw_topic_only(topic, event, color=f'{"blue" if default_side == "taught" else ""}')
+        head = self._draw_topic(topic, event, color=f'{"blue" if default_side == "taught" else ""}')
         rank = self._draw_rank_edge(head, base_rank, default_side == 'taught', topic, event)
         tail = self._get_tail_node(topic, event, default_side == 'required')
         if tail is not None:
@@ -29,11 +30,11 @@ class FullChartBuilder(EventChartBuilder):
     def _draw_event(self, event: Event, start_rank: int) -> int:
         max_rank: int | None = None
         for topic in event.topics_taught:
-            name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'taught', start_rank)
+            name, rank = self.__draw_topic_and_dependencies(topic, event, 'taught', start_rank)
             if max_rank is None or rank > max_rank:
                 max_rank = rank
         for topic in event.topics_required:
-            name, rank = self.__draw_sided_topic_and_dependencies(topic, event, 'required', start_rank)
+            name, rank = self.__draw_topic_and_dependencies(topic, event, 'required', start_rank)
             if max_rank is None or rank > max_rank:
                 max_rank = rank
             self._latest_required_times[topic] = event, name

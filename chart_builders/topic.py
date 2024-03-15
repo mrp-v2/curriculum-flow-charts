@@ -1,5 +1,6 @@
 from chart_builders.base_chart_builder import BaseChartBuilder
 from util.chart_context import ChartContext
+from util.topic import Topic
 
 
 class TopicChartBuilder(BaseChartBuilder):
@@ -8,10 +9,10 @@ class TopicChartBuilder(BaseChartBuilder):
     def __init__(self, context: ChartContext):
         super().__init__(context, 'topics')
 
-    def draw_topic_and_dependencies(self, topic: str):
+    def draw_topic_and_dependencies(self, topic: Topic):
         """
         Draws a topic, and edges connecting it to its dependencies.
         """
-        self._draw_node(topic, topic)
-        for dependency in self._context.info.topics[topic].dependencies:
-            self._draw_edge(dependency, topic)
+        self._draw_node(topic.name, topic.name)
+        for dependency in topic.dependencies:
+            self._draw_edge(dependency.name, topic.name)
