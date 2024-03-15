@@ -80,10 +80,6 @@ def __read_topics(info: DependencyInfo, topics_file: IOBase) -> dict[str, Topic]
         topic = Topic(name, row[2].strip())
         topics_by_topic[topic] = dependencies
         topics_by_name[name] = topic
-    for topic in info.topics:
-        for dependency in info.topics[topic].dependencies:
-            if dependency not in info.topics:
-                print(f'DATA-WARNING: dependency \'{dependency}\' of \'{topic}\' is not in the topic list')
     for topic in topics_by_topic:
         dependencies: set[Topic] = set()
         for dependency in topics_by_topic[topic]:

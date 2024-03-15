@@ -40,9 +40,10 @@ def __main(args: Namespace):
     if args.event:
         chart_type = 'event'
         matches: list[Event]
-        matches = [event for event in info.events if args.event.lower() in event.name.lower()]
+        matches = [event for event in info.get_events() if args.event.lower() in event.name.lower()]
         if len(matches) != 1:
             print(f'Found {len(matches)} matches for event query \'{args.event}\'. Try again with a different query')
+            return
         else:
             event = matches[0]
     if args.full:

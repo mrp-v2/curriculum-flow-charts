@@ -1,7 +1,9 @@
+from typing import Callable
+
 from graphviz import Digraph
 
 from chart_builders.base_chart_builder import BaseChartBuilder
-from util import Event, Side, qualify
+from util import Event, qualify
 from util.chart_context import ChartContext
 from util.topic import Topic
 
@@ -17,6 +19,7 @@ class EventChartBuilder(BaseChartBuilder):
         :param chart_name: The name of this chart. Defaults to the event name
         """
         super().__init__(context, chart_name if chart_name else context.focus_event.name)
+        self._graph.attr(splines='ortho', ranksep='1')
         self._event_graphs: dict[Event, Digraph] = {}
         """Stores the sub-graphs for each event."""
         self._event_id_graphs: dict[int, dict[str | None, Digraph]] = {}
@@ -43,137 +46,24 @@ class EventChartBuilder(BaseChartBuilder):
             graph = Digraph(event.name)
             graph.attr(cluster='True')
             self._event_graphs[event] = graph
-        self._draw_node(qualified_name, topic.name, graph, attrs,
-                        color=f'{"blue" if topic in event.topics_taught else ""}')
-        return qualified_name
+        attrs['color'] = 'blue' if topic in event.topics_taught else ''
+        return self._draw_node(qualified_name, topic.name, graph, **attrs)
 
-    def __draw_topic_depth_helper(self, topic: Topic, event: Event) -> tuple[str, str, Event]:
+    def _draw_topic_and_dependencies(self, topic: Topic, event: Event, base_rank: int,
+                                     dependency_predicate: Callable[[Topic], bool] = None) -> int:
         """
-        Draws a topic.
-        Then checks if the topic has been taught previous to event.
-        If it has, then recursively:\n
-        -Draw the topic under the event where it was previously taught\n
-        -Draw an edge connecting the two places the topics was drawn.
-        :return: A tuple containing the qualified name of the node drawn,
-                 the qualified name of the first node where the topic was taught,
-                 and the first event where the topic was taught
-        """
-        name = self._draw_topic(topic, event)
-        previous_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
-        if previous_taught_time is not None and previous_taught_time != event:
-            recent_qualified_name, first_name, first_event = self.__draw_topic_depth_helper(topic, previous_taught_time)
-            self._draw_edge(recent_qualified_name, name)
-            return name, first_name, first_event
-        else:
-            return name, name, event
-
-    def _draw_topic_depth(self, topic: Topic, event: Event) -> Event:
-        """
-        Draws a topic, and redraws for every time it has been taught before.
-        :param topic: The topic to draw.
-        :param event: The event to draw it under.
-        :return: The first event where the topic is taught.
-        """
-        name, first_name, first_event = self.__draw_topic_depth_helper(topic, event)
-        return first_event
-
-    def _draw_dependencies_depth(self, topic: Topic, parent_event: Event):
-        """
-        Draws nodes for all the dependencies of a topic.
-        :param topic: The topic to draw the dependencies of.
-        :param parent_event: The event to use as both the default event and parent event when calling add_topic.
-        """
-        for dependency in topic.dependencies:
-            self.__draw_sided_topic_and_dependencies_depth(dependency, parent_event, dependency is not topic,
-                                                           qualify(topic, parent_event))
-
-    def _draw_dependencies(self, topic: Topic, event: Event, head: str):
-        """
-        Draws nodes for all the dependencies of a topic.
-        :param topic: The topic to draw the dependencies of.
-        :param event: The event to use as both the default event and parent event when calling add_topic.
-        """
-        for dependency in topic.dependencies:
-            tail = self._draw_topic(dependency, self._context.info.get_most_recent_taught_time(event, dependency, True))
-            self._draw_edge(tail, head)
-
-    def __draw_sided_topic_and_dependencies_depth(self, topic: Topic, default_event: Event, include_start: bool = True,
-                                                  parent_node: str | None = None):
-        """
-        Draws a node for a topic, and recursively draws nodes for its dependencies and draws edges connecting it to its
-        dependencies.
-        :param topic: The topic to draw.
-        :param default_event: Specifies the default event to draw topic under.
-        :param include_start: If parent_node is specified, specifies whether to include search_start
-                              in the search for the event where topic is most recently taught.
-        :param parent_node: If specified, connects the topic's node to parent_node.
-                            Also triggers a search for the event where topic is most recently taught,
-                            starting at search_start.
-        """
-        if parent_node:
-            topic_event = self._context.info.get_most_recent_taught_time(default_event, topic, include_start)
-        else:
-            topic_event = default_event
-        if topic_event is None:
-            print(f'WARNING: topic \'{topic}\' is not taught before it is required '
-                  f'in Unit {default_event.unit}, {default_event.name}!')
-        else:
-            original_event = self._draw_topic_depth(topic, topic_event)
-            if parent_node is not None:
-                name = qualify(topic, topic_event)
-                self._draw_edge(name, parent_node)
-            self._draw_dependencies_depth(topic, original_event)
-
-    def __draw_topic_and_dependencies(self, topic: Topic, event: Event):
-        """
-        Draws a node for a topic, and recursively draws nodes for its dependencies and draws edges connecting it to its
-        dependencies.
+        Draws a node for a topic, and draws edges connecting it to its dependencies.
         :param topic: The topic to draw.
         """
         head = self._draw_topic(topic, event)
-        self._draw_dependencies(topic, event, head)
-
-    def _draw_dependent_tree_helper(self, event: Event, topics_of_interest: dict[Topic, str]):
-        """
-        Recursively draws all events/topics that involve topics in the topics_of_interest dictionary.
-        :param event: The current event being drawn.
-        :param topics_of_interest: Tracks relevant topics for the dependent tree and their latest qualified name.
-        """
-        for topic in event.topics_taught:
-            if topic in topics_of_interest:
-                name = self._draw_topic(topic, event)
-                last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
-                tail_name = qualify(topic, last_taught_time)
-                self._draw_edge(tail_name, name)
-                topics_of_interest[topic] = name
-            to_add: list[tuple[Topic, str]] = []
-            for topic_of_interest in topics_of_interest:
-                if topic_of_interest in topic.dependencies:
-                    name = self._draw_topic(topic, event)
-                    last_taught_time = self._context.info.get_most_recent_taught_time(event, topic_of_interest, True)
-                    tail_name = qualify(topic_of_interest, last_taught_time)
-                    self._draw_edge(tail_name, name)
-                    to_add.append((topic, name))
-            for topic_to_set, qualified_name in to_add:
-                topics_of_interest[topic_to_set] = qualified_name
-        for topic in event.topics_required:
-            if topic in topics_of_interest:
-                name = self._draw_topic(topic, event)
-                self._draw_edge(topics_of_interest[topic], name)
-                topics_of_interest[topic] = name
-        if event.next:
-            self._draw_dependent_tree_helper(event.next, topics_of_interest)
-
-    def _draw_dependent_tree(self, event: Event):
-        """
-        Draws all the events/topics that depend on the topics taught by event.
-        :param event: The event to draw all dependents of.
-        """
-        topics_of_interest: dict[Topic, str] = {}
-        """Tracks relevant topics for the dependent tree and their latest qualified name."""
-        for topic in event.topics_taught:
-            topics_of_interest[topic] = qualify(topic, event)
-        self._draw_dependent_tree_helper(event.next, topics_of_interest)
+        rank = self._draw_rank_edge(head, base_rank, topic in event.topics_taught, topic, event)
+        for dependency in topic.dependencies:
+            if dependency_predicate is not None and not dependency_predicate(dependency):
+                continue
+            last_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
+            if last_taught_time is not None:
+                self._draw_edge(qualify(dependency, last_taught_time), head, constraint='false')
+        return rank
 
     def _draw_unit(self, unit: int, start_rank: int) -> int:
         for event_id in self._context.info.grouped_events[unit]:
@@ -181,42 +71,43 @@ class EventChartBuilder(BaseChartBuilder):
         return start_rank
 
     def draw(self):
-        """
-        TODO
-        :return:
-        """
         start_rank: int = 0
         for unit in self._context.info.grouped_events:
             start_rank = self._draw_unit(unit, start_rank)
-        # TODO remove everything after this
-        if event.topics_taught:
-            if event.topics_required:
-                for topic in event.topics_required:
-                    self.__draw_sided_topic_and_dependencies_depth(topic, event)
-                for topic in event.topics_taught:
-                    self.__draw_sided_topic_and_dependencies_depth(topic, event)
-                self._draw_dependent_tree(event)
-            else:
-                for topic in event.topics_taught:
-                    self.__draw_sided_topic_and_dependencies_depth(topic, event)
-                self._draw_dependent_tree(event)
-        else:
-            if event.topics_required:
-                for topic in event.topics_required:
-                    self.__draw_sided_topic_and_dependencies_depth(topic, event)
-            else:
-                print(f'ERROR: event {event} has no topics taught or required')
 
-    def _finish_event(self, event: Event, parent_graph: Digraph, **attr):
-        self._event_graphs[event].attr(_attributes=attr, label=event.name)
-        parent_graph.subgraph(self._event_graphs[event])
+    def _finish_event(self, event: Event):
+        if event.unit not in self._event_id_graphs:
+            self._event_id_graphs[event.unit] = {}
+        if None not in self._event_id_graphs[event.unit]:
+            unit_graph = Digraph(f'Unit {event.unit}')
+            unit_graph.attr(cluster='true', margin='16', penwidth='3', newrank='true', label=f'Unit {event.unit}',
+                            style='rounded')
+            self._event_id_graphs[event.unit][None] = unit_graph
+        if event.group_id not in self._event_id_graphs[event.unit]:
+            temp = Digraph(f'{event.unit}{event.group_id}')
+            temp.attr(cluster='True', penwidth='3', newrank='True', label=event.group_id, style='invis')
+            self._event_id_graphs[event.unit][event.group_id] = temp
+        graph = self._event_graphs[event]
+        graph.attr(style='dashed', label=event.name)
+        self._event_id_graphs[event.unit][event.group_id].subgraph(graph)
 
     def finish(self):
         """
         Finalizes the graph and returns it.
         """
         for event in self._event_graphs:
-            self._finish_event(event, self._graph)
+            self._finish_event(event)
+        for unit in self._event_id_graphs:
+            if None not in self._event_id_graphs[unit]:
+                temp = Digraph(f'Unit {unit}')
+                temp.attr(cluster='True')
+                temp.attr(label=f'Unit {unit}')
+                self._event_id_graphs[unit][None] = temp
+            for event_id in self._event_id_graphs[unit]:
+                if event_id is None:
+                    continue
+                self._event_id_graphs[unit][None].subgraph(self._event_id_graphs[unit][event_id])
+            self._graph.subgraph(self._event_id_graphs[unit][None])
         return self._graph
 
     def _get_tail_node(self, topic: Topic, event: Event, include_start: bool) -> str | None:
@@ -273,25 +164,56 @@ class EventChartBuilder(BaseChartBuilder):
             self._draw_edge(self._rank_nodes[rank - 1], node, color='red' if self._context.verbose_graph else 'invis')
         return rank
 
-    def _draw_event(self, event: Event, start_rank: int) -> int:
+    def _draw_event(self, event: Event, start_rank: int) -> int | None:
         max_rank: int | None = None
         if event < self._context.focus_event:
-            for topic in event.topics_taught:
-                for focus_topic in self._context.focus_event.get_all_topics():
-                    if self._context.info.is_topic_dependent_on(focus_topic, topic):
-                        self.__draw_topic_and_dependencies(topic, event)
-        elif event == self._context.focus_event:
-            pass  # TODO
+            rank = self._draw_pre_focus_event(event, start_rank)
+            if rank is not None and (max_rank is None or rank > max_rank):
+                max_rank = rank
+        elif event > self._context.focus_event and not self._context.focus_event.topics_taught:
+            return None
         else:
-            pass  # TODO
+            rank = self._draw_post_focus_event(event, start_rank)
+            if max_rank is None or rank > max_rank:
+                max_rank = rank
+        return max_rank
+
+    def _draw_post_focus_event(self, event, start_rank) -> int:
+        max_rank: int | None = None
+        for topic in event.get_all_topics():
+            for dependence_test in self._context.focus_event.topics_taught:
+                if dependence_test == topic or self._context.info.is_topic_dependent_on(topic, dependence_test):
+                    if topic in event.topics_taught:
+                        predicate = lambda dep: dep == dependence_test or self._context.info.is_topic_dependent_on(dep,
+                                                                                                                   dependence_test)
+                        rank = self._draw_topic_and_dependencies(topic, event, start_rank, predicate)
+                        if max_rank is None or rank > max_rank:
+                            max_rank = rank
+                else:
+                    head = self._draw_topic(topic, event)
+                    rank = self._draw_rank_edge(head, start_rank, False)
+                    if max_rank is None or rank > max_rank:
+                        max_rank = rank
+                    tail = self._get_tail_node(topic, event, False)
+                    self._draw_edge(tail, head, constraint='false')
+                    self._latest_required_times[topic] = event, head
+
+        return max_rank
+
+    def _draw_pre_focus_event(self, event: Event, start_rank: int) -> int | None:
+        max_rank: int | None = None
+        for topic in event.topics_taught:
+            for focus_topic in self._context.focus_event.get_all_topics():
+                if topic == focus_topic or self._context.info.is_topic_dependent_on(focus_topic, topic):
+                    rank = self._draw_topic_and_dependencies(topic, event, start_rank)
+                    if max_rank is None or rank > max_rank:
+                        max_rank = rank
         return max_rank
 
     def _draw_id(self, event_id, start_rank, unit) -> int:
         max_rank: int | None = None
         for event in self._context.info.grouped_events[unit][event_id].values():
             rank = self._draw_event(event, start_rank)
-            if max_rank is None or rank > max_rank:
+            if rank is not None and (max_rank is None or rank > max_rank):
                 max_rank = rank
-        if max_rank is None:
-            raise ValueError('Rank error: event id had no rank')
-        return max_rank + 1
+        return max_rank + 1 if max_rank else start_rank

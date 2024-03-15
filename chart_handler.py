@@ -66,5 +66,5 @@ def full_chart(context: ChartContext):
     """
     builder = FullChartBuilder(context)
     builder.label('Full Course Dependencies')
-    builder.draw_full()
+    builder.draw()
     __view_graph(context, builder.finish())

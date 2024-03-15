@@ -20,7 +20,7 @@ class BaseChartBuilder:
         self.__edges_drawn: list[tuple[str, str]] = []
         """Tracks all edges drawn to prevent duplicate edges."""
 
-    def _draw_node(self, node: str, label: str = None, parent_graph: Digraph = None, _attributes=None, **attrs) -> str:
+    def _draw_node(self, node: str, label: str = None, parent_graph: Digraph = None, **attrs) -> str:
         """
         Draws a node inside parent_graph, after making sure the node hasn't already been drawn.
         :param node: The qualified name of the node to draw.
@@ -33,7 +33,7 @@ class BaseChartBuilder:
         if parent_graph is None:
             parent_graph = self._graph
         if node not in self.__nodes_drawn:
-            parent_graph.node(node, label if label else node, _attributes, attrs)
+            parent_graph.node(node, label if label else node, attrs)
         return node
 
     def _draw_edge(self, tail: str, head: str, **attrs):
