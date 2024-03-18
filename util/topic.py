@@ -1,3 +1,6 @@
+from typing import Iterable, Generator
+
+
 class Topic:
     """
     Stores information about a topic.
@@ -35,3 +38,30 @@ class Topic:
             if test_result:
                 return 1 + test_result
         return None
+
+    def is_dependency_of_depth(self, topics: Iterable) -> bool:
+        topic: Topic
+        for topic in topics:
+            if self == topic:
+                return True
+            if self.is_dependency_of_depth(topic.dependencies):
+                return True
+        return False
+
+    def is_dependent_of_depth(self, topics: Iterable) -> bool:
+        topic: Topic
+        for topic in topics:
+            if self == topic:
+                return True
+        for topic in self.dependencies:
+            if topic.is_dependent_of_depth(topics):
+                return True
+        return False
+
+
+def get_dependent_topics(dependencies: Iterable[Topic], dependents: Iterable[Topic]) -> Generator[Topic, None, None]:
+    for dependent in dependents:
+        for dependency in dependencies:
+            if dependent.is_dependent_on(dependency):
+                yield dependent
+                break
