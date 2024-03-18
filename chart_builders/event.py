@@ -5,7 +5,7 @@ from graphviz import Digraph
 from chart_builders.base_chart_builder import BaseChartBuilder
 from util import Event, qualify
 from util.chart_context import ChartContext
-from util.topic import Topic
+from util.topic import Topic, get_dependent_topics
 
 
 class EventChartBuilder(BaseChartBuilder):
@@ -201,34 +201,31 @@ class EventChartBuilder(BaseChartBuilder):
 
     def _draw_post_focus_event(self, event: Event, start_rank: int) -> int:
         max_rank: int | None = None
-        for topic in event.get_all_topics():
-            for dependence_test in self._context.focus_event.topics_taught:
-                if dependence_test == topic or topic.is_dependent_on(dependence_test):
-                    if topic in event.topics_taught:
-                        def predicate(dep: Topic):
-                            return dep == dependence_test or dep.is_dependent_on(dependence_test)
+        for topic in get_dependent_topics(self._context.focus_event.topics_taught, event.get_all_topics()):
+            if topic in event.topics_taught:
+                def predicate(dep: Topic):
+                    return dep.is_dependent_of_depth(self._context.focus_event.topics_taught)
 
-                        rank = self._draw_topic_and_dependencies(topic, event, start_rank, predicate)
-                        if max_rank is None or rank > max_rank:
-                            max_rank = rank
-                    else:
-                        head = self._draw_topic(topic, event)
-                        rank = self._draw_rank_edge(head, start_rank, False)
-                        if max_rank is None or rank > max_rank:
-                            max_rank = rank
-                        tail = self._get_tail_node(topic, event, False)
-                        self._draw_edge(tail, head, constraint='false')
-                        self._latest_required_times[topic] = event, head
+                rank = self._draw_topic_and_dependencies(topic, event, start_rank, predicate)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
+            else:
+                head = self._draw_topic(topic, event)
+                rank = self._draw_rank_edge(head, start_rank, False)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
+                tail = self._get_tail_node(topic, event, False)
+                self._draw_edge(tail, head, constraint='false')
+                self._latest_required_times[topic] = event, head
         return max_rank
 
     def _draw_pre_focus_event(self, event: Event, start_rank: int) -> int | None:
         max_rank: int | None = None
         for topic in event.topics_taught:
-            for focus_topic in self._context.focus_event.get_all_topics():
-                if topic == focus_topic or focus_topic.is_dependent_on(topic):
-                    rank = self._draw_topic_and_dependencies(topic, event, start_rank)
-                    if max_rank is None or rank > max_rank:
-                        max_rank = rank
+            if topic.is_dependency_of_depth(self._context.focus_event.get_all_topics()):
+                rank = self._draw_topic_and_dependencies(topic, event, start_rank)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
         return max_rank
 
     def _draw_id(self, event_id, start_rank, unit) -> int:
