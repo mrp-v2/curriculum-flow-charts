@@ -66,11 +66,11 @@ class DependencyInfo:
                 units_with_projects.add(event.unit)
         # Simplify topic dependencies
         for topic in self.get_topics():
-            _simplify(self, topic.dependencies, topic.__str__())
+            _simplify(topic.dependencies, topic.__str__())
         # simplify event topics and ensure all topics are referenced in an event
         unused_topics = [item for item in self.get_topics()]
         for event in self.get_events():
-            _simplify(self, event.topics_required, event.__str__())
+            _simplify(event.topics_required, event.__str__())
             for topic in event.topics_taught:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
@@ -95,7 +95,7 @@ class DependencyInfo:
         return None
 
 
-def _simplify(info: DependencyInfo, topics: set[Topic], title: str):
+def _simplify(topics: set[Topic], title: str):
     """
     Takes a list of topics, and removes topics that are dependencies of other topics in the list.
     Prints info about each topic removed in this way.
