@@ -28,7 +28,7 @@ def topic_chart(context: ChartContext):
     builder = TopicChartBuilder(context)
     builder.label('Topic Dependencies')
 
-    for topic in context.info.topics:
+    for topic in context.info.get_topics():
         builder.draw_topic_and_dependencies(topic)
 
     __view_graph(context, builder.finish())
@@ -42,7 +42,7 @@ def topic_by_event_chart(context: ChartContext):
     builder = TopicByEventChartBuilder(context)
     builder.label('Topic Dependencies By Event')
 
-    for event in context.info.events:
+    for event in context.info.get_events():
         builder.draw_event_topics_and_dependencies(event)
 
     __view_graph(context, builder.finish())
