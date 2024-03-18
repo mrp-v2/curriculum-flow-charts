@@ -234,4 +234,4 @@ class EventChartBuilder(BaseChartBuilder):
             rank = self._draw_event(event, start_rank)
             if rank is not None and (max_rank is None or rank > max_rank):
                 max_rank = rank
-        return max_rank + 1 if max_rank else start_rank
+        return max_rank + 1 if max_rank is not None else start_rank
