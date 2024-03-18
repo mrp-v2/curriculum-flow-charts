@@ -50,55 +50,6 @@ class DependencyInfo:
                                 continue
                         yield event
 
-    def is_topic_dependent_on(self, topic: Topic, dependency: Topic) -> bool:
-        """
-        Returns True if dependency is a dependency - or a sub-dependency - of topic.
-        """
-        return self.get_topic_dependency_depth(topic, dependency) is not None
-
-    def get_topic_dependency_depth(self, topic: Topic, dependency: Topic) -> int | None:
-        """
-        Calculates the number of dependencies between topic and dependency, including dependency.
-        e.g. if dependency is a direct dependency of topic, then the result is 1.
-        """
-        if dependency in topic.dependencies:
-            return 1
-        for test_dependency in topic.dependencies:
-            test_result = self.get_topic_dependency_depth(test_dependency, dependency)
-            if test_result:
-                return 1 + test_result
-        return None
-
-    def get_topic_taught_depth(self, topic: Topic, event: Event) -> int:
-        """
-        Calculates the maximum dependency depth of a topic within the taught topics of an event.
-        """
-        if topic not in event.topics_taught:
-            raise ValueError(f'Topic {topic} is not taught in {event}')
-        max_depth: int = 0
-        for test in event.topics_taught:
-            if test == topic:
-                continue
-            test_result = self.get_topic_dependency_depth(topic, test)
-            if test_result and test_result > max_depth:
-                max_depth = test_result
-        return max_depth
-
-    def get_topics_taught_depth(self, event: Event) -> int:
-        """
-        Calculates the maximum dependency depth of topics taught in this event on other topics taught in this event.
-        :return: The number of layers of dependency within the topics taught in this event. Will be at least one
-                 as long as there are topics taught in the event.
-        """
-        if not event.topics_taught:
-            raise ValueError(f'Event {event} has no topics taught')
-        max_depth: int = 0
-        for topic in event.topics_taught:
-            test_result = self.get_topic_taught_depth(topic, event)
-            if test_result and test_result > max_depth:
-                max_depth = test_result
-        return max_depth + 1
-
     def finalize(self):
         """
         Ensures there is only one project for each unit.
@@ -155,7 +106,7 @@ def _simplify(info: DependencyInfo, topics: set[Topic], title: str):
         for other_topic in topics:
             if other_topic == topic or topic in topics_to_remove:
                 continue
-            if info.is_topic_dependent_on(other_topic, topic):
+            if other_topic.is_dependent_on(topic):
                 print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{title}\' because it is a dependency of \''
                       f'{other_topic}\', which is also in \'{title}\'')
                 topics_to_remove.add(topic)

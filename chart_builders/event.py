@@ -157,7 +157,7 @@ class EventChartBuilder(BaseChartBuilder):
                 raise ValueError('If adjust_depth is True, topic should not be None')
             if event is None:
                 raise ValueError('If adjust_depth is True, event should not be None')
-            rank += self._context.info.get_topic_taught_depth(topic, event)
+            rank += event.topic_taught_depth(topic)
         self._node_ranks[node] = rank
         if rank > 0:
             self.__ensure_rank_exists(rank - 1)
@@ -168,7 +168,7 @@ class EventChartBuilder(BaseChartBuilder):
         max_rank: int | None = None
         if event == self._context.focus_event:
             rank = self._draw_focus_event(event, start_rank)
-            if rank is not None and (max_rank is None or rand > max_rank):
+            if rank is not None and (max_rank is None or rank > max_rank):
                 max_rank = rank
         elif event < self._context.focus_event:
             rank = self._draw_pre_focus_event(event, start_rank)
@@ -203,11 +203,11 @@ class EventChartBuilder(BaseChartBuilder):
         max_rank: int | None = None
         for topic in event.get_all_topics():
             for dependence_test in self._context.focus_event.topics_taught:
-                if dependence_test == topic or self._context.info.is_topic_dependent_on(topic, dependence_test):
+                if dependence_test == topic or topic.is_dependent_on(dependence_test):
                     if topic in event.topics_taught:
-                        def predicate(dep):
-                            return dep == dependence_test or self._context.info.is_topic_dependent_on(dep,
-                                                                                                      dependence_test)
+                        def predicate(dep: Topic):
+                            return dep == dependence_test or dep.is_dependent_on(dependence_test)
+
                         rank = self._draw_topic_and_dependencies(topic, event, start_rank, predicate)
                         if max_rank is None or rank > max_rank:
                             max_rank = rank
@@ -225,7 +225,7 @@ class EventChartBuilder(BaseChartBuilder):
         max_rank: int | None = None
         for topic in event.topics_taught:
             for focus_topic in self._context.focus_event.get_all_topics():
-                if topic == focus_topic or self._context.info.is_topic_dependent_on(focus_topic, topic):
+                if topic == focus_topic or focus_topic.is_dependent_on(topic):
                     rank = self._draw_topic_and_dependencies(topic, event, start_rank)
                     if max_rank is None or rank > max_rank:
                         max_rank = rank

@@ -1,7 +1,7 @@
 from graphviz import Digraph
 
 from chart_builders.base_chart_builder import BaseChartBuilder
-from util import Event, qualify
+from util import Event, qualify, Topic
 from util.chart_context import ChartContext
 
 
@@ -16,7 +16,7 @@ class TopicByEventChartBuilder(BaseChartBuilder):
         self._event_graphs: dict[Event, Digraph] = {}
         """Stores the sub-graphs for each event."""
 
-    def __draw_topic(self, topic: str, event: Event) -> str:
+    def __draw_topic(self, topic: Topic, event: Event) -> str:
         """
         Draws a topic.
         :param topic: The topic to draw.
@@ -28,7 +28,7 @@ class TopicByEventChartBuilder(BaseChartBuilder):
             self._event_graphs[event].attr(cluster='True')
             self._event_graphs[event].attr(label=event.name)
         qualified_name = qualify(topic, event)
-        self._draw_node(qualified_name, topic, self._event_graphs[event])
+        self._draw_node(qualified_name, topic.name, self._event_graphs[event])
         return qualified_name
 
     def draw_event_topics_and_dependencies(self, event: Event):
@@ -37,13 +37,13 @@ class TopicByEventChartBuilder(BaseChartBuilder):
         :param event: The event to use.
         """
         for topic in event.topics_taught:
-            qualified_name = self.__draw_topic(topic.name, event)
+            qualified_name = self.__draw_topic(topic, event)
             last_taught_time = self._context.info.get_most_recent_taught_time(event, topic)
             if last_taught_time:
-                self._draw_edge(qualify(topic.name, last_taught_time), qualified_name)
+                self._draw_edge(qualify(topic, last_taught_time), qualified_name)
             for dependency in topic.dependencies:
                 dependency_taught_time = self._context.info.get_most_recent_taught_time(event, dependency, True)
-                self._draw_edge(qualify(dependency.name, dependency_taught_time), qualified_name)
+                self._draw_edge(qualify(dependency, dependency_taught_time), qualified_name)
 
     def finish(self):
         for sub_graph in self._event_graphs.values():

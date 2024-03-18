@@ -46,21 +46,6 @@ def __parse_topics(topics_string: str, comment: str, known_topics: dict[str, Top
     return topics
 
 
-def __order_events(info: DependencyInfo):
-    """
-    Sets the next property of each event in a DependencyInfo object.
-    :param info: The DependencyInfo object to use.
-    """
-    last_event: Event | None = None
-    for unit in info.grouped_events:
-        for event_id in info.grouped_events[unit]:
-            for event_type in info.grouped_events[unit][event_id]:
-                if last_event is not None:
-                    last_event.next = info.grouped_events[unit][event_id][event_type]
-                    pass
-                last_event = info.grouped_events[unit][event_id][event_type]
-
-
 def __read_topics(info: DependencyInfo, topics_file: IOBase) -> dict[str, Topic]:
     """
     Reads the topics file into a DependencyInfo object.
@@ -139,19 +124,13 @@ def __read_events(info: DependencyInfo, events_file: IOBase, topics: dict[str, T
     topic_taught_events: dict[Topic, str] = {}
     events_reader = csv.reader(events_file, delimiter='\t')
     first_row: bool = True
-    last_event: Event | None = None
 
     for row in events_reader:
         if first_row:
             first_row = False
             continue
         event = __read_event(topics, row, topic_taught_events)
-        if __add_event(info, event):
-            if last_event is not None:
-                last_event.next = event
-            last_event = event
-
-    __order_events(info)
+        __add_event(info, event)
 
 
 def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:

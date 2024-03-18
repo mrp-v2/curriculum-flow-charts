@@ -34,8 +34,6 @@ class Event:
         """The names of topics taught in the event."""
         self.topics_required: set[Topic] = topics_required
         """The names of topics required in the event."""
-        self.next: Event | None = None
-        """The event that comes after this event."""
         event_type, unit_number, event_id = _decide_event_type_and_number(self.name)
         self.event_type: EventType = event_type
         """The type of the event."""
@@ -93,6 +91,21 @@ class Event:
                 continue
             topics_seen.add(topic)
             yield topic
+
+    def topic_taught_depth(self, topic: Topic) -> int:
+        """
+        Calculates the maximum dependency depth of a topic within the topics taught in this event.
+        """
+        if topic not in self.topics_taught:
+            raise ValueError(f'Topic \'{topic}\' is not taught in this event')
+        max_depth: int = 0
+        for test in self.topics_taught:
+            if test == topic:
+                continue
+            test_result = topic.dependency_depth(test)
+            if test_result and test_result > max_depth:
+                max_depth = test_result
+        return max_depth
 
 
 def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
