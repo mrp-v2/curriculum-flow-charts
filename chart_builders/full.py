@@ -4,6 +4,9 @@ from util.chart_context import ChartContext
 
 
 class Full(Event):
+    """
+    Draws everything.
+    """
     def __init__(self, context: ChartContext):
         super().__init__(context, chart_name='full')
 

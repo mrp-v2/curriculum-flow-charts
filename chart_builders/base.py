@@ -6,7 +6,10 @@ from util.chart_context import ChartContext
 
 
 class Base(metaclass=ABCMeta):
-    """The base class for chart builders."""
+    """
+    The base class for chart builders.
+    Provides common functions and behaviors.
+    """
 
     def __init__(self, context: ChartContext, chart_name: str):
         """
@@ -55,7 +58,7 @@ class Base(metaclass=ABCMeta):
         """
         self._graph.attr(label=label)
 
-    def finish(self):
+    def finish(self) -> Digraph:
         """
         Finalizes the graph and returns it.
         """

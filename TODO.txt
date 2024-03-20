@@ -1,5 +1,1 @@
-Other charts:
-1. group by unit and group id in other charts too.
-
-command-line:
-2. new chart type that focuses on a specific topic
+new chart type that focuses on a specific topic

@@ -9,6 +9,11 @@ from util.chart_context import ChartContext
 
 
 class EventBase(Base, metaclass=ABCMeta):
+    """
+    The base class for chart builders that group topics by event, group id, and unit.
+    Provides common functions and behaviors.
+    """
+
     def __init__(self, context: ChartContext, chart_name: str):
         super().__init__(context, chart_name)
         self._graph.attr(splines='ortho', ranksep='1')
