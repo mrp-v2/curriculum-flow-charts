@@ -242,15 +242,18 @@ class EventBase(Base, metaclass=ABCMeta):
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
             else:
-                rank = self._draw_required_topic(event, start_rank, topic)
+                rank = self._draw_required_topic(topic, event, start_rank)
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
         return max_rank
 
-    def _draw_required_topic(self, event, start_rank, topic):
+    def _draw_required_topic(self, topic, event, start_rank) -> int:
         """
         Draws a topic required by an event.
-        Connects it to the last time it was required or the the last time it was taught.
+        Connects it to the last time it was required or the last time it was taught.
+        :param topic: The topic to draw.
+        :param event: The event to draw the topic under.
+        :param start_rank: The rank to draw the topic on.
         """
         head = self._draw_topic(topic, event)
         rank = self._draw_rank_edge(head, start_rank, False)

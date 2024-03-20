@@ -48,7 +48,7 @@ class FocusEvent(EventBase):
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
             else:
-                rank = self._draw_required_topic(event, start_rank, topic)
+                rank = self._draw_required_topic(topic, event, start_rank)
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
         return max_rank
