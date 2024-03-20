@@ -1,10 +1,11 @@
 from chart_builders.base import Base as ChartBuilder
+from chart_builders.focus_topic import FocusTopic
 from util.chart_context import ChartContext
 from util.event import Event
 
 from chart_builders.topic_by_event import TopicByEvent
 from chart_builders.topic import Topic
-from chart_builders.event import Event
+from chart_builders.focus_event import FocusEvent
 from chart_builders.full import Full
 
 
@@ -21,7 +22,7 @@ def __view_graph(chart_context: ChartContext, builder: ChartBuilder):
     print(f'Chart saved to {path}')
 
 
-def topic_chart(context: ChartContext):
+def topics_chart(context: ChartContext):
     """
     Draws a topic chart.
     :param context: The ChartContext to use to draw the chart.
@@ -31,7 +32,7 @@ def topic_chart(context: ChartContext):
     __view_graph(context, builder)
 
 
-def topic_by_event_chart(context: ChartContext):
+def topics_by_event_chart(context: ChartContext):
     """
     Draws a topic by event chart.
     :param context: The ChartContext to use to draw the chart.
@@ -46,8 +47,14 @@ def event_chart(context: ChartContext):
     Draws an event chart.
     :param context: The ChartContext to use to draw the chart.
     """
-    builder: Event = Event(context)
-    builder.label(f'{context.focus_event.name} Dependencies')
+    builder: FocusEvent = FocusEvent(context)
+    builder.label(f'{context.focus_event} Relations')
+    __view_graph(context, builder)
+
+
+def topic_chart(context: ChartContext):
+    builder: FocusTopic = FocusTopic(context)
+    builder.label(f'{context.focus_topic} Relations')
     __view_graph(context, builder)
 
 

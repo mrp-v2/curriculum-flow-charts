@@ -1,14 +1,14 @@
 from pathlib import Path
 
 from argparse import ArgumentParser, FileType, Namespace
-from typing import Literal
+from typing import Literal, Iterable, TypeVar, Callable
 
-from chart_handler import topic_chart, topic_by_event_chart, event_chart, full_chart
-from util import Event
+from chart_handler import topics_chart, topics_by_event_chart, event_chart, full_chart, topic_chart
+from util import Event, Topic
 from util.chart_context import ChartContext
 from util.parse_dependency_info import read_info
 
-ChartType = Literal['topics', 'topics_by_event', 'event', 'full']
+ChartType = Literal['topics', 'topics_by_event', 'event', 'full', 'topic']
 
 
 def draw_chart(context: ChartContext, chart_type: ChartType):
@@ -19,13 +19,32 @@ def draw_chart(context: ChartContext, chart_type: ChartType):
     """
     match chart_type:
         case 'topics':
-            topic_chart(context)
+            topics_chart(context)
         case 'topics_by_event':
-            topic_by_event_chart(context)
+            topics_by_event_chart(context)
         case 'event':
             event_chart(context)
         case 'full':
             full_chart(context)
+        case 'topic':
+            topic_chart(context)
+
+
+T = TypeVar('T')
+
+
+def find_match(pattern: str, item_getter: Callable[[], Iterable[T]]) -> T | None:
+    items = item_getter()
+    matches = [item for item in items if pattern == str(item)]
+    if len(matches) == 1:
+        return matches[0]
+    items = item_getter()
+    matches = [item for item in items if pattern.lower() == str(item).lower()]
+    if len(matches) == 1:
+        return matches[0]
+    items = item_getter()
+    matches = [item for item in items if pattern.lower() in str(item).lower()]
+    return matches[0] if len(matches) == 1 else None
 
 
 def __main(args: Namespace):
@@ -33,23 +52,27 @@ def __main(args: Namespace):
     info = read_info(args.topics_file, args.events_file)
     chart_type: ChartType | None = None
     event: Event | None = None
+    topic: Topic | None = None
     if args.topics:
         chart_type = 'topics'
     if args.topics_by_event:
         chart_type = 'topics_by_event'
     if args.event:
         chart_type = 'event'
-        matches: list[Event]
-        matches = [event for event in info.get_events() if args.event.lower() in event.name.lower()]
-        if len(matches) != 1:
-            print(f'Found {len(matches)} matches for event query \'{args.event}\'. Try again with a different query')
+        event = find_match(args.event, info.get_events)
+        if event is None:
+            print(f'Event query \'{args.event}\' was ambiguous. Try again with a different query.')
             return
-        else:
-            event = matches[0]
+    if args.topic:
+        chart_type = 'topic'
+        topic = find_match(args.topic, info.get_topics)
+        if topic is None:
+            print(f'Topic query \'{args.topic}\' was ambiguous. Try again with a different query.')
+            return
     if args.full:
         chart_type = 'full'
     output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
-    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [], event)
+    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [], event, topic)
     if chart_type:
         draw_chart(context, chart_type)
 
@@ -89,6 +112,8 @@ if __name__ == '__main__':
     and what topics build off of each topic.''')
     options.add_argument('-event', help='''Creates a chart showing the specified event,
     its topics taught and required, as well as all other events and topics that relate to that event.''')
+    options.add_argument('-topic', help='''Creates a chart showing the all the places the specified topic
+    is taught or required.''')
     options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
     __main(parser.parse_args())

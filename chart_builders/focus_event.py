@@ -4,17 +4,16 @@ from util.chart_context import ChartContext
 from util.topic import Topic, get_dependent_topics
 
 
-class Event(EventBase):
+class FocusEvent(EventBase):
     """
     Focuses on a single event, drawing all things related to that event.
     """
 
-    def __init__(self, context: ChartContext, chart_name: str = None):
+    def __init__(self, context: ChartContext):
         """
         :param context: The ChartContext to use for this builder.
-        :param chart_name: The name of this chart. Defaults to the event name
         """
-        super().__init__(context, chart_name if chart_name else context.focus_event.name)
+        super().__init__(context, context.focus_event.name)
 
     def _draw_event(self, event: EventObj, start_rank: int) -> int | None:
         max_rank: int | None = None

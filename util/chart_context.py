@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from util import Event
+from util import Event, Topic
 from util.dependency_info import DependencyInfo
 
 
@@ -10,7 +10,7 @@ class ChartContext:
     """
 
     def __init__(self, info: DependencyInfo, output_dir: Path, output_prefix: str | None, flags: list[str],
-                 focus_event: Event | None):
+                 focus_event: Event | None, focus_topic: Topic | None):
         self.info = info
         """The DependencyInfo for the chart."""
         self.output_dir = output_dir
@@ -19,6 +19,8 @@ class ChartContext:
         """A prefix to prepend to the output file."""
         self.focus_event = focus_event
         """The focus event of the chart, if applicable."""
+        self.focus_topic = focus_topic
+        """The focus topic of the chart, if applicable."""
         self.verbose_graph = 'verbose_graph' in flags
         """Whether to draw extra debug information on in the chart. Only has an effect on charts that support it."""
 
