@@ -4,9 +4,9 @@ from util.chart_context import ChartContext
 from util.event import Event
 
 from chart_builders.topic_by_event import TopicByEventChartBuilder
-from chart_builders.topic import TopicChartBuilder
-from chart_builders.event import EventChartBuilder
-from chart_builders.full import FullChartBuilder
+from chart_builders.topic import Topic
+from chart_builders.event import Event
+from chart_builders.full import Full
 
 
 def __view_graph(chart_context: ChartContext, graph: Digraph):
@@ -25,7 +25,7 @@ def topic_chart(context: ChartContext):
     Draws a topic chart.
     :param context: The ChartContext to use to draw the chart.
     """
-    builder = TopicChartBuilder(context)
+    builder = Topic(context)
     builder.label('Topic Dependencies')
 
     for topic in context.info.get_topics():
@@ -53,7 +53,7 @@ def event_chart(context: ChartContext):
     Draws an event chart.
     :param context: The ChartContext to use to draw the chart.
     """
-    builder: EventChartBuilder = EventChartBuilder(context)
+    builder: Event = Event(context)
     builder.label(f'{context.focus_event.name} Dependencies')
     builder.draw()
     __view_graph(context, builder.finish())
@@ -64,7 +64,7 @@ def full_chart(context: ChartContext):
     Draws a full chart.
     :param context: The ChartContext to use to draw the chart.
     """
-    builder = FullChartBuilder(context)
+    builder = Full(context)
     builder.label('Full Course Dependencies')
     builder.draw()
     __view_graph(context, builder.finish())

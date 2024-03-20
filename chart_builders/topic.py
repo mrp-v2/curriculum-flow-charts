@@ -1,15 +1,15 @@
-from chart_builders.base_chart_builder import BaseChartBuilder
+from chart_builders.base import Base
 from util.chart_context import ChartContext
-from util.topic import Topic
+from util.topic import Topic as TopicObj
 
 
-class TopicChartBuilder(BaseChartBuilder):
+class Topic(Base):
     """Draws charts using only topics."""
 
     def __init__(self, context: ChartContext):
         super().__init__(context, 'topics')
 
-    def draw_topic_and_dependencies(self, topic: Topic):
+    def draw_topic_and_dependencies(self, topic: TopicObj):
         """
         Draws a topic, and edges connecting it to its dependencies.
         """

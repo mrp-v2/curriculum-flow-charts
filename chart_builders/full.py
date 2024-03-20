@@ -1,13 +1,20 @@
-from chart_builders.event import EventChartBuilder
-from util import Event
+from chart_builders.event import Event
+from util import Event as EventObj
 from util.chart_context import ChartContext
 
 
-class FullChartBuilder(EventChartBuilder):
+class Full(Event):
     def __init__(self, context: ChartContext):
         super().__init__(context, chart_name='full')
 
     def _draw_event_full(self, event, start_rank) -> int:
+        """
+        Draws an event.
+        If a topic is taught, connects it to the last time it was taught or its dependencies.
+        If a topic is required, connects it to the last time it was required or the last time it was taught.
+        :param event: The event to draw.
+        :param start_rank: The rank to start drawing the event on.
+        """
         max_rank: int | None = None
         for topic in event.get_all_topics():
             if topic in event.topics_taught:
@@ -24,5 +31,5 @@ class FullChartBuilder(EventChartBuilder):
                 self._latest_required_times[topic] = event, head
         return max_rank
 
-    def _draw_event(self, event: Event, start_rank: int) -> int:
+    def _draw_event(self, event: EventObj, start_rank: int) -> int:
         return self._draw_event_full(event, start_rank)

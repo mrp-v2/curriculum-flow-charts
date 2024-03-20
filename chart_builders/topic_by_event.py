@@ -1,11 +1,11 @@
 from graphviz import Digraph
 
-from chart_builders.base_chart_builder import BaseChartBuilder
+from chart_builders.base import Base
 from util import Event, qualify, Topic
 from util.chart_context import ChartContext
 
 
-class TopicByEventChartBuilder(BaseChartBuilder):
+class TopicByEventChartBuilder(Base):
     """Draws charts focusing on topics, but grouping topics by event."""
 
     def __init__(self, context: ChartContext):

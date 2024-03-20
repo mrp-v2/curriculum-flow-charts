@@ -1,9 +1,11 @@
+from abc import ABCMeta, abstractmethod
+
 from graphviz import Digraph
 
 from util.chart_context import ChartContext
 
 
-class BaseChartBuilder:
+class Base(metaclass=ABCMeta):
     """The base class for chart builders."""
 
     def __init__(self, context: ChartContext, chart_name: str):
@@ -26,14 +28,13 @@ class BaseChartBuilder:
         :param node: The qualified name of the node to draw.
         :param label: The display name of the node. Defaults to the name of the node.
         :param parent_graph: The graph to draw the node under. Defaults to the main graph.
-        :param _attributes: Any attributes to give the node.
-        :param attrs: More attributes to give the node.
+        :param attrs: Attributes to give the node.
         :return: The qualified name of the node.
         """
         if parent_graph is None:
             parent_graph = self._graph
         if node not in self.__nodes_drawn:
-            parent_graph.node(node, label if label else node, attrs)
+            parent_graph.node(node, label if label else node, **attrs)
         return node
 
     def _draw_edge(self, tail: str, head: str, **attrs):
@@ -41,9 +42,10 @@ class BaseChartBuilder:
         Draws an edge connecting two nodes. Does nothing if the edge has already been drawn.
         :param tail: The qualified name of the tail node.
         :param head: The qualified name of the head node.
+        :param attrs: Attributes to give the edge.
         """
         if (tail, head) not in self.__edges_drawn:
-            self._graph.edge(tail, head, None, attrs)
+            self._graph.edge(tail, head, **attrs)
             self.__edges_drawn.append((tail, head))
 
     def label(self, label: str):
@@ -58,3 +60,10 @@ class BaseChartBuilder:
         Finalizes the graph and returns it.
         """
         return self._graph
+
+    @abstractmethod
+    def draw(self):
+        """
+        Draws the graph.
+        """
+        pass

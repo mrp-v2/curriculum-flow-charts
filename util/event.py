@@ -34,12 +34,12 @@ class Event:
         """The names of topics taught in the event."""
         self.topics_required: set[Topic] = topics_required
         """The names of topics required in the event."""
-        event_type, unit_number, event_id = _decide_event_type_and_number(self.name)
+        event_type, unit, group_id = _calc_type_unit_and_group(self.name)
         self.event_type: EventType = event_type
         """The type of the event."""
-        self.unit: int = unit_number
+        self.unit: int = unit
         """The unit of the event."""
-        self.group_id: str | None = event_id
+        self.group_id: str | None = group_id
         """The group id of the event."""
 
     def __str__(self):
@@ -80,6 +80,11 @@ class Event:
         return not self < other
 
     def get_all_topics(self) -> Generator[Topic, None, None]:
+        """
+        Iterates over all the topics in the event.
+        Taught topics are iterated first, then required topics.
+        No duplicate topics are given.
+        """
         topics_seen: set[Topic] = set()
         for topic in self.topics_taught:
             if topic in topics_seen:
@@ -92,9 +97,10 @@ class Event:
             topics_seen.add(topic)
             yield topic
 
-    def topic_taught_depth(self, topic: Topic) -> int:
+    def calc_topic_depth(self, topic: Topic) -> int:
         """
         Calculates the maximum dependency depth of a topic within the topics taught in this event.
+        :param topic: The topic to calculate the dependency depth of.
         """
         if topic not in self.topics_taught:
             raise ValueError(f'Topic \'{topic}\' is not taught in this event')
@@ -108,11 +114,11 @@ class Event:
         return max_depth
 
 
-def _decide_event_type_and_number(name: str) -> tuple[EventType, int, str | None]:
+def _calc_type_unit_and_group(name: str) -> tuple[EventType, int, str | None]:
     """
-    Calculates the event type, unit, and group id using the event name.
+    Calculates the event type, group id, and unit using the event name.
     :param name: The name of the event.
-    :return: A tuple containing the event type, the unit, and the group id.
+    :return: A tuple containing the event type, unit, and group id.
     """
     short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
     lecture = False
