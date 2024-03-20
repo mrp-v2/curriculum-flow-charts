@@ -19,7 +19,7 @@ class Event(EventBase):
     def _draw_event(self, event: EventObj, start_rank: int) -> int | None:
         max_rank: int | None = None
         if event == self._context.focus_event:
-            rank = self._draw_focus_event(event, start_rank)
+            rank = self._draw_event_full(event, start_rank)
             if rank is not None and (max_rank is None or rank > max_rank):
                 max_rank = rank
         elif event < self._context.focus_event:
@@ -34,24 +34,11 @@ class Event(EventBase):
                 max_rank = rank
         return max_rank
 
-    def _draw_focus_event(self, event: EventObj, start_rank: int):
-        max_rank: int | None = None
-        for topic in event.get_all_topics():
-            if topic in event.topics_taught:
-                rank = self._draw_topic_and_dependencies(topic, event, start_rank)
-                if max_rank is None or rank > max_rank:
-                    max_rank = rank
-            else:
-                head = self._draw_topic(topic, event)
-                rank = self._draw_rank_edge(head, start_rank, False)
-                if max_rank is None or rank > max_rank:
-                    max_rank = rank
-                tail = self._get_tail_node(topic, event, False)
-                self._draw_edge(tail, head, constraint='false')
-                self._latest_required_times[topic] = event, head
-        return max_rank
-
     def _draw_post_focus_event(self, event: EventObj, start_rank: int) -> int:
+        """
+        Draws an event in the same way as `draw_event_full`,
+         but only draws topic that are dependent on a topic taught by the focus event.
+        """
         max_rank: int | None = None
         for topic in get_dependent_topics(self._context.focus_event.topics_taught, event.get_all_topics()):
             if topic in event.topics_taught:
@@ -62,16 +49,16 @@ class Event(EventBase):
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
             else:
-                head = self._draw_topic(topic, event)
-                rank = self._draw_rank_edge(head, start_rank, False)
+                rank = self._draw_required_topic(event, start_rank, topic)
                 if max_rank is None or rank > max_rank:
                     max_rank = rank
-                tail = self._get_tail_node(topic, event, False)
-                self._draw_edge(tail, head, constraint='false')
-                self._latest_required_times[topic] = event, head
         return max_rank
 
     def _draw_pre_focus_event(self, event: EventObj, start_rank: int) -> int | None:
+        """
+        Draws an event in the same way as `draw_event_full`,
+        but only draws topics that are taught and are dependencies of a topic in the focus event.
+        """
         max_rank: int | None = None
         for topic in event.topics_taught:
             if topic.is_dependency_of_depth(self._context.focus_event.get_all_topics()):

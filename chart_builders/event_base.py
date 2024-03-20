@@ -221,3 +221,35 @@ class EventBase(Base, metaclass=ABCMeta):
             return qualify(topic, last_taught_time)
         else:
             return self._latest_required_times[topic][1]
+
+    def _draw_event_full(self, event, start_rank) -> int:
+        """
+        Draws an event.
+        If a topic is taught, connects it to the last time it was taught or its dependencies.
+        If a topic is required, connects it to the last time it was required or the last time it was taught.
+        :param event: The event to draw.
+        :param start_rank: The rank to start drawing the event on.
+        """
+        max_rank: int | None = None
+        for topic in event.get_all_topics():
+            if topic in event.topics_taught:
+                rank = self._draw_topic_and_dependencies(topic, event, start_rank)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
+            else:
+                rank = self._draw_required_topic(event, start_rank, topic)
+                if max_rank is None or rank > max_rank:
+                    max_rank = rank
+        return max_rank
+
+    def _draw_required_topic(self, event, start_rank, topic):
+        """
+        Draws a topic required by an event.
+        Connects it to the last time it was required or the the last time it was taught.
+        """
+        head = self._draw_topic(topic, event)
+        rank = self._draw_rank_edge(head, start_rank, False)
+        tail = self._get_tail_node(topic, event, False)
+        self._draw_edge(tail, head, constraint='false')
+        self._latest_required_times[topic] = event, head
+        return rank
