@@ -1,10 +1,9 @@
-from pathlib import Path
-
 from argparse import ArgumentParser, FileType, Namespace
-from typing import Literal, Iterable, TypeVar, Callable
+from pathlib import Path
+from typing import Literal
 
 from chart_handler import topics_chart, topics_by_event_chart, event_chart, full_chart, topic_chart
-from util import Event, Topic
+from util import Event, Topic, find_match
 from util.chart_context import ChartContext
 from util.parse_dependency_info import read_info
 
@@ -28,23 +27,6 @@ def draw_chart(context: ChartContext, chart_type: ChartType):
             full_chart(context)
         case 'topic':
             topic_chart(context)
-
-
-T = TypeVar('T')
-
-
-def find_match(pattern: str, item_getter: Callable[[], Iterable[T]]) -> T | None:
-    items = item_getter()
-    matches = [item for item in items if pattern == str(item)]
-    if len(matches) == 1:
-        return matches[0]
-    items = item_getter()
-    matches = [item for item in items if pattern.lower() == str(item).lower()]
-    if len(matches) == 1:
-        return matches[0]
-    items = item_getter()
-    matches = [item for item in items if pattern.lower() in str(item).lower()]
-    return matches[0] if len(matches) == 1 else None
 
 
 def __main(args: Namespace):

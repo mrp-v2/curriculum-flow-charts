@@ -1,12 +1,10 @@
 from chart_builders.base import Base as ChartBuilder
-from chart_builders.focus_topic import FocusTopic
-from util.chart_context import ChartContext
-from util.event import Event
-
-from chart_builders.topic_by_event import TopicByEvent
-from chart_builders.topic import Topic
 from chart_builders.focus_event import FocusEvent
+from chart_builders.focus_topic import FocusTopic
 from chart_builders.full import Full
+from chart_builders.topic import Topic
+from chart_builders.topic_by_event import TopicByEvent
+from util.chart_context import ChartContext
 
 
 def __view_graph(chart_context: ChartContext, builder: ChartBuilder):

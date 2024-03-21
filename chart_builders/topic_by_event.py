@@ -1,7 +1,4 @@
-from graphviz import Digraph
-
 from chart_builders.event_base import EventBase
-from util import Event, qualify, Topic
 from util.chart_context import ChartContext
 
 
