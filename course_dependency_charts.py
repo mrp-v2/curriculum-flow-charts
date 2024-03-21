@@ -2,7 +2,7 @@ from argparse import ArgumentParser, FileType, Namespace
 from pathlib import Path
 from typing import Literal
 
-from chart_handler import topics_chart, topics_by_event_chart, event_chart, full_chart, topic_chart
+from util.chart_handler import topics_chart, topics_by_event_chart, event_chart, full_chart, topic_chart
 from util import Event, Topic, find_match
 from util.chart_context import ChartContext
 from util.parse_dependency_info import read_info
