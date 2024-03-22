@@ -77,6 +77,7 @@ class EventBase(Base, metaclass=ABCMeta):
         """
         Finalizes the graph for an event, adding it to its group graph.
         Ensures a group graph exists for the event.
+        :param event: The `Event` to finalize.
         """
         if event.unit not in self._group_graphs:
             self._group_graphs[event.unit] = {}
@@ -92,6 +93,8 @@ class EventBase(Base, metaclass=ABCMeta):
         """
         Finalizes the graph for a group, adding it to its unit graph.
         Ensures a unit graph exists for the group.
+        :param group_id: The group to finalize.
+        :param unit: The unit the group is in.
         """
         if unit not in self._unit_graphs:
             unit_graph = Digraph(f'Unit {unit}')
@@ -103,6 +106,7 @@ class EventBase(Base, metaclass=ABCMeta):
     def _finish_unit(self, unit: int):
         """
         Finalizes the graph for a unit, adding it to the main graph.
+        :param unit: The unit to finalize.
         """
         self._graph.subgraph(self._unit_graphs[unit])
 
@@ -126,6 +130,7 @@ class EventBase(Base, metaclass=ABCMeta):
     def __draw_rank_node(self) -> str:
         """
         Draws a rank node for the current last rank.
+        :return: The qualified name of the rank node.
         """
         return self._draw_node(f'rank_node_{self._last_rank}',
                                shape='ellipse' if self._context.verbose_graph else 'point',
@@ -140,6 +145,7 @@ class EventBase(Base, metaclass=ABCMeta):
         :param adjust_depth: If true, adjusts the rank based on the topic depth within event.
         :param topic: The topic to use to find the topic depth.
         :param event: The event to use to find the topic depth.
+        :return: The rank `node` was drawn on.
         """
         rank: int = base_rank
         if adjust_depth:
@@ -196,6 +202,7 @@ class EventBase(Base, metaclass=ABCMeta):
         :param base_rank: The rank used to start drawing event.
         :param dependency_predicate: An optional predicate to use when deciding whether to draw a connection to a
                                      dependency.
+        :return: The maximum rank used to draw the topic.
         """
         head = self._draw_topic(topic, event)
         rank = self._draw_rank_edge(head, base_rank, topic in event.topics_taught, topic, event)
@@ -212,6 +219,7 @@ class EventBase(Base, metaclass=ABCMeta):
         Decides which node should be the tail.
         :param topic: The topic of the head node.
         :param event: The event of the head node.
+        :param include_start: Whether to include `event` when searching for the last time `topic` was taught.
         :return: The node where topic was most recently taught or required.
         """
         last_taught_time = self._context.info.get_most_recent_taught_time(event, topic, include_start)
@@ -234,6 +242,7 @@ class EventBase(Base, metaclass=ABCMeta):
         If a topic is required, connects it to the last time it was required or the last time it was taught.
         :param event: The event to draw.
         :param start_rank: The rank to start drawing the event on.
+        :return: The maximum rank used to draw the event.
         """
         max_rank: int | None = None
         for topic in event.get_all_topics():
@@ -254,6 +263,7 @@ class EventBase(Base, metaclass=ABCMeta):
         :param topic: The topic to draw.
         :param event: The event to draw the topic under.
         :param start_rank: The rank to draw the topic on.
+        :return: The maximum rank used to draw the topic.
         """
         head = self._draw_topic(topic, event)
         rank = self._draw_rank_edge(head, start_rank, False)

@@ -14,6 +14,10 @@ class DependencyInfo:
         """Allows access to an event by unit, id, and type"""
 
     def get_topics(self) -> Generator[Topic, None, None]:
+        """
+        Iterates over all topics in all events.
+        Duplicate topics are ignored.
+        """
         topics_seen: set[Topic] = set()
         for event in self.get_events():
             for topic in event.topics_taught:
@@ -22,10 +26,14 @@ class DependencyInfo:
                 topics_seen.add(topic)
                 yield topic
 
-    def get_events(self, start: Event = None, include_start: bool = None, forward: bool = True) -> Generator[
-        Event, None, None]:
+    def get_events(self, start: Event = None, include_start: bool = None, forward: bool = True) -> \
+            Generator[Event, None, None]:
         """
         Iterates through all events.
+        :param start: The event to start iterating at.
+        :param include_start: Whether to include the starting event when iterating.
+                              Must be specified if `start` is not `None`.
+        :param forward: Whether to iterate forwards or backwards. Defaults to forwards.
         """
         if start is not None and include_start is None:
             raise ValueError('If start is not None, then include_start should also not be None')
@@ -95,11 +103,12 @@ class DependencyInfo:
         return None
 
 
-def _simplify(topics: set[Topic], title: str):
+def _simplify(topics: set[Topic], label: str):
     """
-    Takes a list of topics, and removes topics that are dependencies of other topics in the list.
-    Prints info about each topic removed in this way.
-    :param title: The title of the list, used when printing info messages about removals.
+    Removes any `Topic` that is a dependency of any other `Topic` in the `set`.
+    Prints info about each `Topic` removed in this way.
+    :param topics: The `set` to simplify.
+    :param label: A label for the list, used when printing info messages about removals.
     """
     topics_to_remove: set[Topic] = set()
     for topic in topics:
@@ -107,8 +116,8 @@ def _simplify(topics: set[Topic], title: str):
             if other_topic == topic or topic in topics_to_remove:
                 continue
             if other_topic.is_dependent_on(topic):
-                print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{title}\' because it is a dependency of \''
-                      f'{other_topic}\', which is also in \'{title}\'')
+                print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{label}\' because it is a dependency of \''
+                      f'{other_topic}\', which is also in \'{label}\'')
                 topics_to_remove.add(topic)
                 break
     for topic in topics_to_remove:

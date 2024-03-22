@@ -34,7 +34,7 @@ class Event:
         """The names of topics taught in the event."""
         self.topics_required: set[Topic] = topics_required
         """The names of topics required in the event."""
-        event_type, unit, group_id = _calc_type_unit_and_group(self.name)
+        event_type, unit, group_id = _parse_type_unit_and_group(self.name)
         self.event_type: EventType = event_type
         """The type of the event."""
         self.unit: int = unit
@@ -114,54 +114,65 @@ class Event:
         return max_depth
 
 
-def _calc_type_unit_and_group(name: str) -> tuple[EventType, int, str | None]:
+def __parse_event_type(name: str) -> EventType:
     """
-    Calculates the event type, group id, and unit using the event name.
-    :param name: The name of the event.
-    :return: A tuple containing the event type, unit, and group id.
+    Parses an event type from a name.
+    :param name: The name.
     """
-    short_name = name.lower() if '-' not in name else name[0:name.index('-')].lower()
-    lecture = False
-    lab = False
-    homework = False
-    project = False
-    if 'lecture' in short_name:
-        lecture = True
-    if 'lab' in short_name:
-        lab = True
-    if 'homework' in short_name or 'hw' in short_name:
-        homework = True
-    if 'project' in short_name:
-        project = True
-    event_type: EventType
-    if lecture:
-        if lab or homework or project:
-            raise ValueError(f'Cannot distinguish event type of {name}')
+    event_type: EventType | None = None
+    if 'lecture' in name:
         event_type = EventType.LECTURE
-    elif lab:
-        if homework or project:
-            raise ValueError(f'Cannot distinguish event type of {name}')
+    if 'lab' in name:
+        if event_type is not None:
+            raise ValueError(f'Cannot distinguish event type of \'{name}\'')
         event_type = EventType.LAB
-    elif homework:
-        if project:
-            raise ValueError(f'Cannot distinguish event type of {name}')
+    if 'homework' in name or 'hw' in name:
+        if event_type is not None:
+            raise ValueError(f'Cannot distinguish event type of \'{name}\'')
         event_type = EventType.HOMEWORK
-    elif project:
+    if 'project' in name:
+        if event_type is not None:
+            raise ValueError(f'Cannot distinguish event type of \'{name}\'')
         event_type = EventType.PROJECT
-    else:
-        raise ValueError(f'Cannot distinguish event type of {name}')
+    if event_type is None:
+        raise ValueError(f'Cannot distinguish event type of \'{name}\'')
+    return event_type
+
+
+def __parse_unit_and_group(name: str) -> tuple[int, str]:
+    """
+    Parses a unit number and group id from a name.
+    :param name: The name.
+    """
     number_start: int = -1
     number_end: int = -1
-    for i in range(len(short_name)):
-        if number_start == -1 and short_name[i].isdigit():
+    for i in range(len(name)):
+        if number_start == -1 and name[i].isdigit():
             number_start = i
-        elif number_start > -1 and number_end == -1 and not short_name[i].isdigit():
+        elif number_start > -1 and number_end == -1 and not name[i].isdigit():
             number_end = i
-        elif number_end > -1 and short_name[i].isdigit():
-            raise ValueError(f'Cannot distinguish event number of {name}')
-    unit_number = int(short_name[number_start:number_end])
-    group_id = short_name[number_end] if short_name[number_end].strip() else None
-    if group_id is None:
-        if event_type != EventType.PROJECT:
-            raise ValueError(f'Event {name} is missing an id')
+        elif number_end > -1 and name[i].isdigit():
+            raise ValueError(f'Cannot distinguish event number of \'{name}\'')
+    unit_number = int(name[number_start:number_end])
+    group_id = name[number_end] if name[number_end].strip() else None
+    return unit_number, group_id
+
+
+def _parse_type_unit_and_group(event_name: str) -> tuple[EventType, int, str | None]:
+    """
+    Parses the event type, group id, and unit using the event name.
+    :param event_name: The name of the event.
+    :return: A tuple containing the event type, unit number, and group id.
+    """
+    short_name = event_name.lower() if '-' not in event_name else event_name[0:event_name.index('-')].lower()
+    try:
+        event_type = __parse_event_type(short_name)
+    except ValueError as e:
+        raise ValueError(f'Error while parsing event type of \'{event_name}\': {e}')
+    try:
+        unit_number, group_id = __parse_unit_and_group(short_name)
+    except ValueError as e:
+        raise ValueError(f'Error while parsing unit number and group id of \'{event_name}\': {e}')
+    if group_id is None and event_type != EventType.PROJECT:
+        raise ValueError(f'Event \'{event_name}\' is missing an id')
     return event_type, unit_number, group_id

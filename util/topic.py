@@ -15,6 +15,10 @@ class Topic:
         """A description of the topic."""
 
     def add_dependencies(self, dependencies: set):
+        """
+        Adds topics to this topic's dependencies.
+        :param dependencies: The dependencies to add to this topic.
+        """
         for dependency in dependencies:
             self.dependencies.add(dependency)
 
@@ -23,13 +27,16 @@ class Topic:
 
     def is_dependent_on(self, dependency) -> bool:
         """
-        Checks if dependency is a dependency of this topic.
+        Checks if `dependency` is a dependency of this topic.
+        :param dependency: A possible dependency of this topic.
         """
         return self.dependency_depth(dependency) is not None
 
     def dependency_depth(self, dependency) -> int | None:
         """
-        Calculates the depth of a dependency - how many layers down the dependency tree it is.
+        Calculates the depth of a dependency, or how many layers down the dependency tree it is.
+        :param dependency: A possible dependency of this topic.
+        :return: The depth of the dependency, or `None` if it is not a dependency.
         """
         if dependency in self.dependencies:
             return 1
@@ -40,6 +47,10 @@ class Topic:
         return None
 
     def is_dependency_of_depth(self, topics: Iterable) -> bool:
+        """
+        Checks if this topic is a dependency of any topic in an `Iterable`.
+        :param topics: An iterable of `Topic` to search.
+        """
         topic: Topic
         for topic in topics:
             if self == topic:
@@ -49,6 +60,10 @@ class Topic:
         return False
 
     def is_dependent_of_depth(self, topics: Iterable) -> bool:
+        """
+        Checks if this topic is dependent on any topic in an `Iterable`.
+        :param topics: An iterable of `Topic` to search.
+        """
         topic: Topic
         for topic in topics:
             if self == topic:
@@ -60,6 +75,11 @@ class Topic:
 
 
 def get_dependent_topics(dependencies: Iterable[Topic], dependents: Iterable[Topic]) -> Generator[Topic, None, None]:
+    """
+    Filters an `Iterable` of `Topic` by which ones are dependent on any `Topic` in another `Iterable`.
+    :param dependencies: An `Iterable` of `Topic` to check for dependencies.
+    :param dependents: An `Iterable` of `Topic` to filter.
+    """
     for dependent in dependents:
         for dependency in dependencies:
             if dependent.is_dependent_on(dependency):

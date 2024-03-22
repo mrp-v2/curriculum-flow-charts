@@ -12,9 +12,9 @@ ChartType = Literal['topics', 'topics_by_event', 'event', 'full', 'topic']
 
 def draw_chart(context: ChartContext, chart_type: ChartType):
     """
-    Draws the ChartType specified by chart_type and using the given ChartContext.
-    :param context: The ChartContext to use for drawing the chart.
-    :param chart_type: The ChartType to draw.
+    Draws a chart.
+    :param context: The `ChartContext` to use for drawing the chart.
+    :param chart_type: The `ChartType` to draw.
     """
     match chart_type:
         case 'topics':
@@ -29,8 +29,10 @@ def draw_chart(context: ChartContext, chart_type: ChartType):
             topic_chart(context)
 
 
-def __main(args: Namespace):
-    """Handles the parsed command line arguments."""
+def main(args: Namespace):
+    """
+    Handles parsed command line arguments.
+    """
     info = read_info(args.topics_file, args.events_file)
     chart_type: ChartType | None = None
     event: Event | None = None
@@ -98,4 +100,4 @@ if __name__ == '__main__':
     is taught or required.''')
     options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
-    __main(parser.parse_args())
+    main(parser.parse_args())

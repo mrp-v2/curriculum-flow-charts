@@ -4,6 +4,9 @@ from util.chart_context import ChartContext
 
 
 class FocusTopic(EventBase):
+    """
+    Focuses on a single `Topic`, drawing all things related to it.
+    """
 
     def __init__(self, context: ChartContext):
         super().__init__(context, context.focus_topic.name)

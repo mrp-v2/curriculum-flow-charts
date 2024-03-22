@@ -46,10 +46,9 @@ def __parse_topics(topics_string: str, comment: str, known_topics: dict[str, Top
     return topics
 
 
-def __read_topics(info: DependencyInfo, topics_file: IOBase) -> dict[str, Topic]:
+def __read_topics(topics_file: IOBase) -> dict[str, Topic]:
     """
     Reads the topics file into a DependencyInfo object.
-    :param info: The DependencyInfo object to read information into.
     :param topics_file: The topics file.
     """
     topics_by_topic: dict[Topic, set[str]] = {}
@@ -136,10 +135,12 @@ def __read_events(info: DependencyInfo, events_file: IOBase, topics: dict[str, T
 def read_info(topics_file: IOBase, events_file: IOBase) -> DependencyInfo:
     """
     Reads information from a topics file and an events file to create a DependencyInfo object.
+    :param topics_file: The file containing topic information.
+    :param events_file: The file containing event information.
     :return: A DependencyInfo object.
     """
     info = DependencyInfo()
-    topics = __read_topics(info, topics_file)
+    topics = __read_topics(topics_file)
     __read_events(info, events_file, topics)
     info.finalize()
     return info

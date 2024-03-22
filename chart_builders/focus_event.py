@@ -6,7 +6,7 @@ from util.topic import Topic, get_dependent_topics
 
 class FocusEvent(EventBase):
     """
-    Focuses on a single event, drawing all things related to that event.
+    Focuses on a single `Event`, drawing all things related to it.
     """
 
     def __init__(self, context: ChartContext):

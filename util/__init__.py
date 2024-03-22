@@ -1,4 +1,4 @@
-from typing import Literal, TypeVar
+from typing import Callable, Iterable, Literal, TypeVar
 
 from util.event import Event
 from util.topic import Topic
