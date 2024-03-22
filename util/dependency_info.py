@@ -1,5 +1,6 @@
 from typing import Generator
 
+from util import InfoLevel
 from util.event import Event, EventType
 from util.topic import Topic
 
@@ -58,7 +59,7 @@ class DependencyInfo:
                                 continue
                         yield event
 
-    def finalize(self):
+    def finalize(self, info_level: InfoLevel):
         """
         Ensures there is only one project for each unit.
         For each event, removes required topics that are dependencies of other required topics for that event.
@@ -74,19 +75,20 @@ class DependencyInfo:
                 units_with_projects.add(event.unit)
         # Simplify topic dependencies
         for topic in self.get_topics():
-            _simplify(topic.dependencies, topic.__str__())
+            _simplify(topic.dependencies, topic.__str__(), info_level)
         # simplify event topics and ensure all topics are referenced in an event
         unused_topics = [item for item in self.get_topics()]
         for event in self.get_events():
-            _simplify(event.topics_required, event.__str__())
+            _simplify(event.topics_required, event.__str__(), info_level)
             for topic in event.topics_taught:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
             for topic in event.topics_required:
                 if topic in unused_topics:
                     unused_topics.remove(topic)
-        for topic in unused_topics:
-            print(f'DATA-WARNING: topic \'{topic}\' is not used in any event')
+        if info_level >= InfoLevel.WARNING:
+            for topic in unused_topics:
+                print(f'DATA-WARNING: topic \'{topic}\' is not used in any event')
 
     def get_most_recent_taught_time(self, start: Event, topic: Topic, include_start: bool = False) -> Event | None:
         """
@@ -103,7 +105,7 @@ class DependencyInfo:
         return None
 
 
-def _simplify(topics: set[Topic], label: str):
+def _simplify(topics: set[Topic], label: str, info_level: InfoLevel):
     """
     Removes any `Topic` that is a dependency of any other `Topic` in the `set`.
     Prints info about each `Topic` removed in this way.
@@ -116,8 +118,9 @@ def _simplify(topics: set[Topic], label: str):
             if other_topic == topic or topic in topics_to_remove:
                 continue
             if other_topic.is_dependent_on(topic):
-                print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{label}\' because it is a dependency of \''
-                      f'{other_topic}\', which is also in \'{label}\'')
+                if info_level >= InfoLevel.INFO:
+                    print(f'DATA-INFO: ignoring topic \'{topic}\' in \'{label}\' because it is a dependency of \''
+                          f'{other_topic}\', which is also in \'{label}\'')
                 topics_to_remove.add(topic)
                 break
     for topic in topics_to_remove:

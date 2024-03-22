@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Callable, Iterable, Literal, TypeVar
 
 from util.event import Event
@@ -33,3 +34,28 @@ def find_match(pattern: str, item_getter: Callable[[], Iterable[T]]) -> T | None
     items = item_getter()
     matches = [item for item in items if pattern.lower() in str(item).lower()]
     return matches[0] if len(matches) == 1 else None
+
+
+class InfoLevel(Enum):
+    SILENT = 0
+    ERROR = 1
+    WARNING = 2
+    INFO = 3
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+
+
+def info_level_from_str(level_str: str) -> InfoLevel:
+    match level_str:
+        case 'silent':
+            return InfoLevel.SILENT
+        case 'error':
+            return InfoLevel.ERROR
+        case 'warning':
+            return InfoLevel.WARNING
+        case 'info':
+            return InfoLevel.INFO
