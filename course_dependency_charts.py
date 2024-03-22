@@ -56,14 +56,14 @@ if __name__ == '__main__':
                         and there may only be one project in each unit. Extra parts of the event name should come 
                         after a hyphen. The third column is a semicolon seperated list of topics taught in the event. 
                         The fourth column is a semicolon seperated list of topics required for the event.''')
-    parser.add_argument('-output_dir', help='''Specifies a directory to save output files to.
-                        Defaults to the current working directory.''')
+    parser.add_argument('-output_dir', default='output', help='''Specifies a directory to save output files to.
+                        Defaults to \'./output/\'.''')
     parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
     parser.add_argument('-debug_rank', dest='flags', action='append_const', const='debug_rank',
                         help='''Activates drawing debug information relating to rank in graphs that support it.''')
     parser.add_argument('-info_level', default='warning', choices=['info', 'warning', 'error', 'silent'],
                         help='''Specifies the upper severity limit of what information to print while parsing the 
-                        topics and events.''')
+                        topics and events. Defaults to \'warning\'.''')
     charts_options = parser.add_argument_group('charts options', 'zero or more of the following charts:')
     charts_options.add_argument('-topics', action='store_true',
                                 help='''Creates a chart showing what topics build off of each topic.''')
