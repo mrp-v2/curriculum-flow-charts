@@ -33,7 +33,7 @@ class ChartContext:
         """The focus event of the chart, if applicable."""
         self.focus_topic = focus_topic
         """The focus topic of the chart, if applicable."""
-        self.verbose_graph = 'verbose_graph' in flags
+        self.debug_rank = 'debug_rank' in flags
         """Whether to draw extra debug information on in the chart. Only has an effect on charts that support it."""
 
     def get_chart_file(self, chart_name: str) -> str:

@@ -125,7 +125,7 @@ class EventBase(Base, metaclass=ABCMeta):
             self._rank_nodes[self._last_rank] = name
             if self._last_rank > 0:
                 self._draw_edge(self._rank_nodes[self._last_rank - 1], name,
-                                color='red' if self._context.verbose_graph else 'invis')
+                                color='red' if self._context.debug_rank else 'invis')
 
     def __draw_rank_node(self) -> str:
         """
@@ -133,8 +133,8 @@ class EventBase(Base, metaclass=ABCMeta):
         :return: The qualified name of the rank node.
         """
         return self._draw_node(f'rank_node_{self._last_rank}',
-                               shape='ellipse' if self._context.verbose_graph else 'point',
-                               color='red' if self._context.verbose_graph else 'invis')
+                               shape='ellipse' if self._context.debug_rank else 'point',
+                               color='red' if self._context.debug_rank else 'invis')
 
     def _draw_rank_edge(self, node: str, base_rank: int, adjust_depth: bool, topic: Topic = None,
                         event: Event = None) -> int:
@@ -157,7 +157,7 @@ class EventBase(Base, metaclass=ABCMeta):
         self._node_ranks[node] = rank
         if rank > 0:
             self.__ensure_rank_exists(rank - 1)
-            self._draw_edge(self._rank_nodes[rank - 1], node, color='red' if self._context.verbose_graph else 'invis')
+            self._draw_edge(self._rank_nodes[rank - 1], node, color='red' if self._context.debug_rank else 'invis')
         return rank
 
     def finish(self):

@@ -16,7 +16,7 @@ def __view_graph(chart_context: ChartContext, builder: ChartBuilder):
     builder.draw()
     graph = builder.finish()
     path = graph.view(filename=chart_context.get_chart_file(graph.name), directory=chart_context.output_dir,
-                      cleanup=not chart_context.verbose_graph)
+                      cleanup=not chart_context.debug_rank)
     print(f'Chart saved to {path}')
 
 

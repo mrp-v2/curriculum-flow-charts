@@ -59,8 +59,8 @@ if __name__ == '__main__':
     parser.add_argument('-output_dir', help='''Specifies a directory to save output files to.
                         Defaults to the current working directory.''')
     parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
-    parser.add_argument('-verbose_graph', dest='flags', action='append_const', const='verbose_graph',
-                        help='''Activates drawing debug information in graphs that support it.''')
+    parser.add_argument('-debug_rank', dest='flags', action='append_const', const='debug_rank',
+                        help='''Activates drawing debug information relating to rank in graphs that support it.''')
     parser.add_argument('-info_level', default='warning', choices=['info', 'warning', 'error', 'silent'],
                         help='''Specifies the upper severity limit of what information to print while parsing the 
                         topics and events.''')
