@@ -1,7 +1,11 @@
 from pathlib import Path
+from typing import Literal
 
 from util import Event, Topic
 from util.dependency_info import DependencyInfo
+
+Flag = Literal['verbose_graph']
+"""The different option flags that can be used."""
 
 
 class ChartContext:
@@ -9,8 +13,16 @@ class ChartContext:
     Stores information about the context for a chart.
     """
 
-    def __init__(self, info: DependencyInfo, output_dir: Path, output_prefix: str | None, flags: list[str],
-                 focus_event: Event | None, focus_topic: Topic | None):
+    def __init__(self, info: DependencyInfo, output_dir: Path, output_prefix: str | None, flags: list[Flag],
+                 focus_event: Event | None = None, focus_topic: Topic | None = None):
+        """
+        :param info: The `DependencyInfo` to use to create the chart.
+        :param output_dir: The directory to save the chart to.
+        :param output_prefix: An optional prefix to prepend the chart's filename with.
+        :param flags: A list of `Flag` to use when creating the chart.
+        :param focus_event: An optional event to focus on. Only relevant for some chart types.
+        :param focus_topic: An optional topic to focus on. Only relevant for some chart types.
+        """
         self.info = info
         """The DependencyInfo for the chart."""
         self.output_dir = output_dir

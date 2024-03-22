@@ -2,31 +2,12 @@ from argparse import ArgumentParser, FileType, Namespace
 from pathlib import Path
 from typing import Literal
 
-from util.chart_handler import topics_chart, topics_by_event_chart, event_chart, full_chart, topic_chart
-from util import Event, Topic, find_match
+from util import find_match
 from util.chart_context import ChartContext
+from util.chart_handler import event_chart, full_chart, topic_chart, topics_by_event_chart, topics_chart
 from util.parse_dependency_info import read_info
 
 ChartType = Literal['topics', 'topics_by_event', 'event', 'full', 'topic']
-
-
-def draw_chart(context: ChartContext, chart_type: ChartType):
-    """
-    Draws a chart.
-    :param context: The `ChartContext` to use for drawing the chart.
-    :param chart_type: The `ChartType` to draw.
-    """
-    match chart_type:
-        case 'topics':
-            topics_chart(context)
-        case 'topics_by_event':
-            topics_by_event_chart(context)
-        case 'event':
-            event_chart(context)
-        case 'full':
-            full_chart(context)
-        case 'topic':
-            topic_chart(context)
 
 
 def main(args: Namespace):
@@ -34,31 +15,26 @@ def main(args: Namespace):
     Handles parsed command line arguments.
     """
     info = read_info(args.topics_file, args.events_file)
-    chart_type: ChartType | None = None
-    event: Event | None = None
-    topic: Topic | None = None
-    if args.topics:
-        chart_type = 'topics'
-    if args.topics_by_event:
-        chart_type = 'topics_by_event'
-    if args.event:
-        chart_type = 'event'
-        event = find_match(args.event, info.get_events)
-        if event is None:
-            print(f'Event query \'{args.event}\' was ambiguous. Try again with a different query.')
-            return
-    if args.topic:
-        chart_type = 'topic'
-        topic = find_match(args.topic, info.get_topics)
-        if topic is None:
-            print(f'Topic query \'{args.topic}\' was ambiguous. Try again with a different query.')
-            return
-    if args.full:
-        chart_type = 'full'
     output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
-    context = ChartContext(info, output_dir, args.output_prefix, args.flags if args.flags else [], event, topic)
-    if chart_type:
-        draw_chart(context, chart_type)
+    flags = args.flags if args.flags else []
+    if args.topics:
+        topics_chart(ChartContext(info, output_dir, args.output_prefix, flags))
+    if args.topics_by_event:
+        topics_by_event_chart(ChartContext(info, output_dir, args.output_prefix, flags))
+    for event_name in args.event if args.event else []:
+        event = find_match(event_name, info.get_events)
+        if event is None:
+            print(f'Event query \'{event_name}\' was ambiguous. Try again with a different query.')
+            return
+        event_chart(ChartContext(info, output_dir, args.output_prefix, flags, focus_event=event))
+    for topic_name in args.topic if args.topic else []:
+        topic = find_match(topic_name, info.get_topics)
+        if topic is None:
+            print(f'Topic query \'{topic_name}\' was ambiguous. Try again with a different query.')
+            return
+        topic_chart(ChartContext(info, output_dir, args.output_prefix, flags, focus_topic=topic))
+    if args.full:
+        full_chart(ChartContext(info, output_dir, args.output_prefix, flags))
 
 
 if __name__ == '__main__':
@@ -87,17 +63,16 @@ if __name__ == '__main__':
     parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
     parser.add_argument('-verbose_graph', dest='flags', action='append_const', const='verbose_graph',
                         help='''Activates drawing debug information in graphs that support it.''')
-    descriptive_options = parser.add_argument_group('charts options', 'one of the following charts:')
-    options = descriptive_options.add_mutually_exclusive_group(required=True)
-    options.add_argument('-topics', action='store_true',
-                         help='''Creates a chart showing what topics build off of each topic.''')
-    options.add_argument('-topics_by_event', action='store_true',
-                         help='''Creates a chart showing what topics each event teaches,
+    charts_options = parser.add_argument_group('charts options', 'zero or more of the following charts:')
+    charts_options.add_argument('-topics', action='store_true',
+                                help='''Creates a chart showing what topics build off of each topic.''')
+    charts_options.add_argument('-topics_by_event', action='store_true',
+                                help='''Creates a chart showing what topics each event teaches,
     and what topics build off of each topic.''')
-    options.add_argument('-event', help='''Creates a chart showing the specified event,
+    charts_options.add_argument('-event', action='append', help='''Creates a chart showing the specified event,
     its topics taught and required, as well as all other events and topics that relate to that event.''')
-    options.add_argument('-topic', help='''Creates a chart showing the all the places the specified topic
-    is taught or required.''')
-    options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
+    charts_options.add_argument('-topic', action='append', help='''Creates a chart showing the all the places the 
+    specified topic is taught or required.''')
+    charts_options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
     main(parser.parse_args())
