@@ -142,6 +142,10 @@ class Parser:
             self.info.grouped_events[event.unit] = {}
         if event.group_id not in self.info.grouped_events[event.unit]:
             self.info.grouped_events[event.unit][event.group_id] = {}
+        if event.event_type in self.info.grouped_events[event.unit][event.group_id]:
+            raise ValueError(f'Conflicting events \'{event}\' and '
+                             f'\'{self.info.grouped_events[event.unit][event.group_id][event.event_type]}\' '
+                             f'have the same type, unit, and group')
         self.info.grouped_events[event.unit][event.group_id][event.event_type] = event
         return True
 
