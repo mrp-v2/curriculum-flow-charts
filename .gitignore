@@ -6,6 +6,10 @@
 # Local spreadsheet files
 *.tsv
 
+# Demo spreadsheet files
+!demo_topics.tsv
+!demo_events.tsv
+
 # IDEA files
 /.idea
 
