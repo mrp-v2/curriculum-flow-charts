@@ -14,10 +14,10 @@ def main(args: Namespace):
     """
     Handles parsed command line arguments.
     """
-    info = read_info(args.topics_file, args.events_file, args.info_level)
+    info = read_info(args.topics, args.events, args.info_level)
     output_dir = Path(args.output_dir) if args.output_dir else Path.cwd()
     flags = args.flags if args.flags else []
-    if args.topics:
+    if args.all_topics:
         topics_chart(ChartContext(info, output_dir, args.output_prefix, flags))
     if args.topics_by_event:
         topics_by_event_chart(ChartContext(info, output_dir, args.output_prefix, flags))
@@ -39,13 +39,13 @@ def main(args: Namespace):
 
 if __name__ == '__main__':
     parser = ArgumentParser(prog='Course Dependency Chart Maker')
-    parser.add_argument('topics_file', type=FileType(),
+    parser.add_argument('topics', type=FileType(),
                         help='''The path to a tsv file containing topic information. 
                         One topic per row - the first row is assumed to be a header and is ignored.
                         The first column is the topic name.
                         The second column is a semicolon seperated list of topics the topic depends on.
                         The third column is a description of the topic.''')
-    parser.add_argument('events_file', type=FileType(),
+    parser.add_argument('events', type=FileType(),
                         help='''The path to a tsv file containing event information. One event per row - the first 
                         row is assumed to be a header and is ignored. The first column is ignored. It may contain 
                         extra information or be left empty. The second column specifies the name of the event. The 
@@ -56,24 +56,24 @@ if __name__ == '__main__':
                         and there may only be one project in each unit. Extra parts of the event name should come 
                         after a hyphen. The third column is a semicolon seperated list of topics taught in the event. 
                         The fourth column is a semicolon seperated list of topics required for the event.''')
-    parser.add_argument('-output_dir', default='output', help='''Specifies a directory to save output files to.
+    parser.add_argument('--output-dir', default='output', help='''Specifies a directory to save output files to.
                         Defaults to \'./output/\'.''')
-    parser.add_argument('-output_prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
-    parser.add_argument('-debug_rank', dest='flags', action='append_const', const='debug_rank',
+    parser.add_argument('--output-prefix', default='', help='''Specifies a prefix to prepend to output file names.''')
+    parser.add_argument('-d', '--debug-rank', dest='flags', action='append_const', const='debug_rank',
                         help='''Activates drawing debug information relating to rank in graphs that support it.''')
-    parser.add_argument('-info_level', default='warning', choices=['info', 'warning', 'error', 'silent'],
+    parser.add_argument('-i', '--info-level', default='warning', choices=['info', 'warning', 'error', 'silent'],
                         help='''Specifies the upper severity limit of what information to print while parsing the 
                         topics and events. Defaults to \'warning\'.''')
     charts_options = parser.add_argument_group('charts options', 'zero or more of the following charts:')
-    charts_options.add_argument('-topics', action='store_true',
+    charts_options.add_argument('--all-topics', action='store_true',
                                 help='''Creates a chart showing what topics build off of each topic.''')
-    charts_options.add_argument('-topics_by_event', action='store_true',
+    charts_options.add_argument('--topics-by-event', action='store_true',
                                 help='''Creates a chart showing what topics each event teaches,
                                 and what topics build off of each topic.''')
-    charts_options.add_argument('-event', action='append', help='''Creates a chart showing the specified event, 
+    charts_options.add_argument('-e', '--event', action='append', help='''Creates a chart showing the specified event, 
     its topics taught and required, as well as all other events and topics that relate to that event.''')
-    charts_options.add_argument('-topic', action='append', help='''Creates a chart showing the all the places the 
+    charts_options.add_argument('--topic', action='append', help='''Creates a chart showing the all the places the 
     specified topic is taught or required.''')
-    charts_options.add_argument('-full', action='store_true', help='''Creates a chart showing all events,
+    charts_options.add_argument('-f', '--full', action='store_true', help='''Creates a chart showing all events,
     their topics taught and required, as well as all relations between events and topics.''')
     main(parser.parse_args())

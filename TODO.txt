@@ -1,3 +1,5 @@
-ideas?:
-args for listing topics and events
-different colors for reuiqrements and dependencies
+readme with examples of tables
+
+example runs in readme
+
+new topics: strip, double for loop
