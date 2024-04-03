@@ -104,6 +104,15 @@ class DependencyInfo:
             return event
         return None
 
+    def is_required(self, topic: Topic):
+        for test_topic in self.get_topics():
+            if topic in test_topic.dependencies:
+                return True
+        for event in self.get_events():
+            if topic in event.topics_required:
+                return True
+        return False
+
 
 def _simplify(topics: set[Topic], label: str, info_level: InfoLevel):
     """

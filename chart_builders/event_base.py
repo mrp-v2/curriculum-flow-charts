@@ -176,6 +176,14 @@ class EventBase(Base, metaclass=ABCMeta):
             if rank is not None and (start_rank is None or rank + 1 > start_rank):
                 start_rank = rank + 1
 
+    def _get_node_color(self, topic: Topic, event: Event):
+        if not self._context.info.is_required(topic):
+            return 'green4'
+        elif topic in event.topics_taught:
+            return 'blue'
+        else:
+            return ''
+
     def _draw_topic(self, topic: Topic, event: Event, **attrs) -> str:
         """
         Draws a topic under an event.
@@ -190,7 +198,7 @@ class EventBase(Base, metaclass=ABCMeta):
             graph = Digraph(event.name)
             graph.attr(cluster='True')
             self._event_graphs[event] = graph
-        attrs['color'] = 'blue' if topic in event.topics_taught else ''
+        attrs['color'] = self._get_node_color(topic, event)
         return self._draw_node(qualified_name, topic.name, graph, **attrs)
 
     def _draw_topic_and_dependencies(self, topic: Topic, event: Event, base_rank: int,
