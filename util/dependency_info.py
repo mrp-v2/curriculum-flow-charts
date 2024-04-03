@@ -11,7 +11,7 @@ class DependencyInfo:
     """
 
     def __init__(self):
-        self.grouped_events: dict[int, dict[str, dict[EventType, Event]]] = {}
+        self.grouped_events: dict[int, dict[str | None, dict[EventType, Event]]] = {}
         """Allows access to an event by unit, id, and type"""
 
     def get_topics(self) -> Generator[Topic, None, None]:
@@ -61,18 +61,21 @@ class DependencyInfo:
 
     def finalize(self, info_level: InfoLevel):
         """
-        Ensures there is only one project for each unit.
+        Ensures there is only independent event of each type for each unit.
         For each event, removes required topics that are dependencies of other required topics for that event.
         For each topic, removes dependencies that are dependencies of other dependencies for that topic.
         Prints information regarding removals to the console.
         """
-        # Ensure only one project per unit
-        units_with_projects: set[int] = set()
+        # Ensure each event type has only one group independent instance per unit
+        independent_events: dict[int, list[EventType]] = {}
         for event in self.get_events():
-            if event.event_type == 'project':
-                if event.unit in units_with_projects:
-                    raise ValueError(f"Unit {event.unit} has multiple projects!")
-                units_with_projects.add(event.unit)
+            if event.group_id is not None:
+                continue
+            if event.unit not in independent_events:
+                independent_events[event.unit] = []
+            if event.event_type in independent_events[event.unit]:
+                raise ValueError(f'Unit {event.unit} has multiple events of type {event.event_type} without groups')
+            independent_events[event.unit].append(event.event_type)
         # Simplify topic dependencies
         for topic in self.get_topics():
             _simplify(topic.dependencies, topic.__str__(), info_level)

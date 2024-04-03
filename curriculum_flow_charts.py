@@ -51,10 +51,12 @@ if __name__ == '__main__':
                         extra information or be left empty. The second column specifies the name of the event. The 
                         name should include an event type (lecture, lab, homework (hw), or project) and an event id 
                         starting with the unit number, followed by a letter (e.g. '1a', '4c'). Events are 
-                        chronologically ordered by unit, then the alphabetical part of their id (Example event name: 
-                        'Lecture 3b - Learning stuff'). Projects may have the alphabetical part of their id omitted, 
-                        and there may only be one project in each unit. Extra parts of the event name should come 
-                        after a hyphen. The third column is a semicolon seperated list of topics taught in the event. 
+                        chronologically ordered by unit, then the alphabetical part of their id
+                        (Example event name: 'Lecture 3b - Learning stuff').
+                        Events may have the alphabetical part of their id omitted,
+                        if they are the only event without an id of their type within their unit.
+                        Extra parts of the event name should come after a hyphen. 
+                        The third column is a semicolon seperated list of topics taught in the event. 
                         The fourth column is a semicolon seperated list of topics required for the event.''')
     parser.add_argument('--output-dir', default='output', help='''Specifies a directory to save output files to.
                         Defaults to \'./output/\'.''')

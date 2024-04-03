@@ -35,22 +35,26 @@ The file should be in tab separated values (tsv) format.
 The first line is ignored and may include headers.
 Each following line should have a single event, in this format:
 
-- The fist entry is ignored
+- The first entry is ignored
 - The second entry is the name of the event.
 - The third entry is a semicolon separated list of topics taught in the event.
 - The fourth entry is a semicolon separated list of topics required by the event.
 
-Each event has a type of either <i>lecture</i>, <i>lab</i>, <i>homework</i>, or <i>project</i>.
+Each event has a type of either <i>lecture</i>, <i>lab</i>, <i>homework</i>, <i>project</i>, or <i>progress check</i>.
 Each event also has a unit number and group id.
 No two events should have the same type, unit, and group.
 This information is parsed from the event name, in this manner:
 
 - If the name includes a hyphen, only the part of the name preceding any hyphens is considered.
-- The event type is determined by the presence of 'lecture', 'lab', 'homework' (or 'hw'), or 'project' in the event
-  name, ignoring casing.
+- The event type is determined by the presence of the type in the event name, ignoring casing.
+  - 'lecture' for <i>lecture</i>
+  - 'lab' for <i>lab</i>
+  - 'homework' or 'hw' for <i>homework</i>
+  - 'project' for <i>project</i>
+  - 'progress' or 'check' for <i>progress check</i>
 - The unit number is parsed from the first uninterrupted series of digits in the name.
 - The group id is the character immediately following the last character of the unit number, if not whitespace.
-  A <i>project</i> may omit the group id, if it is the only <i>project</i> in the unit.
+  - An event may omit this group id if it is the only event of its type without a group id in its unit.
 
 Chronological ordering of events is based on the unit number, then group id, then event type.
 Event type orderings from first to last are:
@@ -59,6 +63,7 @@ Event type orderings from first to last are:
 2. <i>Lab</i>
 3. <i>Homework</i>
 4. <i>Project</i>
+5. <i>Progress Check</i>
 
 Example events table (also found in demo_events.tsv):
 
@@ -74,6 +79,7 @@ Example events table (also found in demo_events.tsv):
 |                                                     |     Lab 1c - Subtraction     |                |           Subtraction |
 |                                                     |  Homework 1c - Subtraction   |                |           Subtraction |
 |                                                     | Project 1 - Basic Operations |                | Addition; Subtraction |
+|                                                     |       Progress Check 1       |                | Addition; Subtraction |
 |                                                     | Lecture 2a - Multiplication  | Multiplication |                       |
 |                                                     |   Lab 2a - Multiplication    |                |        Multiplication |
 |                                                     | Homework 2a - Multiplication |                |        Multiplication |

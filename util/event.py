@@ -9,6 +9,7 @@ class EventType(Enum):
     LAB = 2
     HOMEWORK = 3
     PROJECT = 4
+    PROGRESS_CHECK = 5
 
     def __lt__(self, other):
         return self.value < other.value
@@ -134,6 +135,10 @@ def __parse_event_type(name: str) -> EventType:
         if event_type is not None:
             raise ValueError(f'Cannot distinguish event type of \'{name}\'')
         event_type = EventType.PROJECT
+    if 'progress' in name or 'check' in name:
+        if event_type is not None:
+            raise ValueError(f'Cannot distinguish event type of \'{name}\'')
+        event_type = EventType.PROGRESS_CHECK
     if event_type is None:
         raise ValueError(f'Cannot distinguish event type of \'{name}\'')
     return event_type
@@ -173,6 +178,4 @@ def _parse_type_unit_and_group(event_name: str) -> tuple[EventType, int, str | N
         unit_number, group_id = __parse_unit_and_group(short_name)
     except ValueError as e:
         raise ValueError(f'Error while parsing unit number and group id of \'{event_name}\': {e}')
-    if group_id is None and event_type != EventType.PROJECT:
-        raise ValueError(f'Event \'{event_name}\' is missing an id')
     return event_type, unit_number, group_id
