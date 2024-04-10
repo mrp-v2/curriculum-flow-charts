@@ -61,7 +61,7 @@ class DependencyInfo:
 
     def finalize(self, info_level: InfoLevel):
         """
-        Ensures there is only independent event of each type for each unit.
+        Ensures there is only one independent event of each type for each unit.
         For each event, removes required topics that are dependencies of other required topics for that event.
         For each topic, removes dependencies that are dependencies of other dependencies for that topic.
         Prints information regarding removals to the console.
